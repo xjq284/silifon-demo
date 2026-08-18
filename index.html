@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SILIFON</title>
   <style>
+    @font-face {
+      font-family: 'SilifonWeb';
+      src: url('fonts/silifon.ttf?v=20260818183022') format('truetype');
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Silifon1Web';
+      src: url('fonts/silifon1.ttf?v=20260818183022') format('truetype');
+      font-display: block;
+    }
     :root { font-family: system-ui, -apple-system, sans-serif; }
     * { box-sizing: border-box; }
     body {
@@ -50,7 +60,7 @@
       line-height: 1;
     }
     .glyph {
-      font-family: var(--silifon-family, serif);
+      font-family: var(--silifon-family, 'SilifonWeb');
       font-size: var(--glyph-size, 3rem);
       padding: 8px 10px;
       border: 1px solid transparent;
@@ -153,9 +163,9 @@
       </div>
     </div>
     <input id="textInput" type="text" placeholder="输入文本" autocomplete="off" />
-    <div class="out-label">硅体</div>
+    <div class="out-label">硅体 <span id="fontStatus"></span></div>
     <div id="silifonOut"></div>
-    <p class="hint">点击单字查看字元结构</p>
+    <p class="hint">点击单字查看字元结构 · 字体由网页加载，无需本机安装</p>
   </div>
 
   <div id="modalOverlay" hidden>
@@ -182,6 +192,10 @@
     let currentFontKey = 'silifon';
 
     const FONT_VERSION = '20260818183022';
+    const FONT_FAMILIES = {
+      silifon: 'SilifonWeb',
+      silifon1: 'Silifon1Web',
+    };
     const FONT_FILES = {
       silifon: 'fonts/silifon.ttf?v=' + FONT_VERSION,
       silifon1: 'fonts/silifon1.ttf?v=' + FONT_VERSION,
@@ -199,6 +213,7 @@
     const jgBlock = document.getElementById('jgBlock');
     const jgLabel = document.getElementById('jgLabel');
     const jgGrid = document.getElementById('jgGrid');
+    const fontStatus = document.getElementById('fontStatus');
 
     fetch('compound_structure.json?v=' + FONT_VERSION)
       .then(r => r.json())
@@ -211,18 +226,33 @@
       .catch(() => { jgData = {}; });
 
     function fontFamilyId(key) {
-      return 'Silifon-' + key + '-' + FONT_VERSION;
+      return FONT_FAMILIES[key] || FONT_FAMILIES.silifon;
+    }
+
+    function setFontStatus(text) {
+      fontStatus.textContent = text ? ' · ' + text : '';
     }
 
     async function ensureFont(key) {
       if (loadedFonts.has(key)) return loadedFonts.get(key);
-      const url = FONT_FILES[key];
-      if (!url) throw new Error('未知字体');
-      const face = new FontFace(fontFamilyId(key), 'url(' + url + ')');
-      await face.load();
-      document.fonts.add(face);
-      loadedFonts.set(key, face);
-      return face;
+      const family = fontFamilyId(key);
+      setFontStatus('加载网页字体…');
+      try {
+        if (document.fonts && document.fonts.load) {
+          await document.fonts.load('48px "' + family + '"');
+        } else {
+          const url = FONT_FILES[key];
+          const face = new FontFace(family, 'url(' + url + ')');
+          await face.load();
+          document.fonts.add(face);
+        }
+        loadedFonts.set(key, family);
+        setFontStatus('');
+        return family;
+      } catch (e) {
+        setFontStatus('网页字体加载失败');
+        throw e;
+      }
     }
 
     function readFontSize() {
@@ -235,7 +265,7 @@
       const px = readFontSize();
       fontSizeInput.value = String(px);
       silifonOut.style.setProperty('--glyph-size', px + 'px');
-      silifonOut.style.setProperty('--silifon-family', "'" + fontFamilyId(currentFontKey) + "', serif");
+      silifonOut.style.setProperty('--silifon-family', "'" + fontFamilyId(currentFontKey) + "'");
     }
 
     async function setFontFile(key) {
@@ -381,7 +411,7 @@
       setFontFile(fontFileSelect.value).catch(() => {});
     });
 
-    ensureFont('silifon').then(() => applyDisplayStyle()).catch(() => {});
+    ensureFont('silifon').then(() => { applyDisplayStyle(); render(); }).catch(() => {});
 
     const q = new URLSearchParams(location.search);
     const init = q.get('text') || q.get('char') || '';
