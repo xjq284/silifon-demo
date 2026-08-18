@@ -3,370 +3,154 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SILIFON 汉字展示</title>
+  <title>SILIFON</title>
   <style>
     @font-face { font-family: 'Silifon'; src: url('fonts/silifon.ttf'); }
-    @font-face { font-family: 'FZJiaGW'; src: url('fonts/FZJiaGW.TTF'); }
 
     :root { font-family: system-ui, -apple-system, sans-serif; }
     * { box-sizing: border-box; }
     body {
-      margin: 0; padding: 32px 24px;
-      background: #f8f8f8; color: #222;
+      margin: 0; padding: 28px 20px 40px;
+      background: #fafafa; color: #222;
       min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center;
     }
-    h1 { font-size: 1.5rem; margin: 0 0 8px; font-weight: 700; }
-    .subtitle { font-size: 0.82rem; color: #666; margin: 0 0 24px; }
-    .input-row {
-      display: flex; gap: 10px; align-items: center;
-      margin-bottom: 28px;
-    }
-    #charInput {
-      width: 5rem; font-size: 2rem; text-align: center;
-      padding: 8px 12px; border-radius: 10px;
-      border: 1.5px solid #bbb; outline: none;
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin: 0 0 20px; font-weight: 600; }
+
+    #textInput {
+      width: 100%;
+      font-size: 1.1rem;
+      padding: 12px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
       font-family: "Songti SC", "SimSun", serif;
     }
-    #charInput:focus { border-color: #1565c0; }
-    #btnShow {
-      padding: 10px 22px; font-size: 1rem;
-      border: none; border-radius: 10px;
-      background: #1565c0; color: #fff;
-      cursor: pointer; font-weight: 500;
-    }
-    #btnShow:hover { background: #1256a8; }
-    .container { width: 100%; max-width: 900px; }
-    .section { margin-bottom: 28px; }
-    .sec-title {
-      font-size: 1rem; font-weight: 600;
-      margin: 0 0 12px; color: #333;
-      border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 6px;
-    }
-    .font-display {
-      display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
-    }
-    .font-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 8px; padding: 14px 16px;
-      background: #fff; border: 1px solid #e8e8e8;
-      border-radius: 10px; min-width: 120px;
-    }
-    .glyph-box {
-      width: 96px; height: 96px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 80px; line-height: 1;
-      border: 1px solid #eee; border-radius: 6px;
-      background: #fafafa;
-    }
-    .font-label { font-size: 0.75rem; color: #666; }
-    .jg-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 12px;
-    }
-    .jg-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 6px; padding: 10px;
-      background: #fff; border: 1px solid #e8e8e8;
-      border-radius: 10px;
-    }
-    .jg-thumb {
-      width: 96px; height: 96px;
-      display: flex; align-items: center; justify-content: center;
-      background: #d7d5d0; border-radius: 6px; overflow: hidden;
-    }
-    .jg-thumb img { width: 96px; height: 96px; object-fit: contain; }
-    .jg-label { font-size: 0.68rem; color: #555; text-align: center; }
-    .empty { font-size: 0.88rem; color: #999; padding: 16px 0; }
-    .hint { font-size: 0.85rem; color: #999; margin-top: 20px; }
-    .loading { font-size: 0.9rem; color: #888; padding: 20px 0; }
-    #status { font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+    #textInput:focus { border-color: #1565c0; }
 
-    .comp-meta { font-size: 0.85rem; color: #666; margin: 0 0 12px; line-height: 1.5; }
-    .comp-grid { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
-    .comp-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 8px; padding: 12px 10px;
-      background: #fff; border: 1px solid #e8e8e8;
-      border-radius: 10px; min-width: 120px;
+    .out-label {
+      margin: 24px 0 10px;
+      font-size: 0.8rem;
+      color: #888;
     }
-    .comp-thumb {
-      width: 96px; height: 96px;
-      display: flex; align-items: center; justify-content: center;
-      background: #fafafa;
-      border: 1px solid #eee; border-radius: 8px;
-      overflow: hidden;
+    #silifonOut {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      line-height: 1;
     }
-    .comp-thumb img { width: 96px; height: 96px; object-fit: contain; }
-    .comp-caption { font-size: 0.72rem; color: #444; text-align: center; }
-    .comp-caption code {
-      display: block; font-size: 0.62rem; color: #888; margin-top: 3px;
-      word-break: break-all;
-    }
-    .comp-kind-badge {
-      display: inline-block;
-      margin-top: 4px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: #eef5ff;
-      color: #1565c0;
-      font-size: 0.66rem;
-      font-weight: 600;
-    }
-    .comp-open-btn {
-      margin-top: 8px;
-      border: none;
+    .glyph {
+      font-family: 'Silifon', serif;
+      font-size: 3rem;
+      padding: 8px 10px;
+      border: 1px solid transparent;
       border-radius: 8px;
-      padding: 6px 10px;
-      background: #1565c0;
-      color: #fff;
-      font-size: 0.72rem;
-      cursor: pointer;
-    }
-    .comp-open-btn:hover { background: #1256a8; }
-
-    .comp-clickable { cursor: pointer; }
-    .comp-clickable:hover { border-color: #90caf9; background: #f7fbff; }
-
-    /* Modal（递归显示复合子结构） */
-    #compoundModalOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 9999;
-    }
-    #compoundModalOverlay[hidden] { display: none; }
-    #compoundModal {
-      width: 100%;
-      max-width: 980px;
-      max-height: 86vh;
       background: #fff;
-      border: 1px solid #e8e8e8;
-      border-radius: 14px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+      cursor: pointer;
+      user-select: none;
     }
-    #compoundModalHeader {
+    .glyph:hover {
+      border-color: #90caf9;
+      background: #f5f9ff;
+    }
+    .glyph.no-structure { cursor: default; opacity: 0.85; }
+    .glyph.no-structure:hover { border-color: transparent; background: #fff; }
+
+    .hint { margin-top: 16px; font-size: 0.8rem; color: #aaa; }
+
+    /* 字元结构弹窗 */
+    #modalOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px; z-index: 999;
+    }
+    #modalOverlay[hidden] { display: none; }
+    #modal {
+      width: 100%; max-width: 640px; max-height: 80vh;
+      background: #fff; border-radius: 12px;
+      display: flex; flex-direction: column;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+    }
+    #modalHead {
       padding: 14px 16px;
       border-bottom: 1px solid #eee;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    #compoundModalTitle { font-weight: 700; color: #222; }
-    #compoundModalClose {
-      border: none;
-      background: #f2f2f2;
-      color: #222;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-      font-weight: 600;
+    #modalTitle { font-weight: 600; }
+    #modalClose {
+      border: none; background: #eee; border-radius: 6px;
+      padding: 6px 12px; cursor: pointer;
     }
-    #compoundModalClose:hover { background: #eaeaea; }
-    #compoundModalBody {
-      padding: 14px 16px 18px;
-      overflow: auto;
+    #modalBody { padding: 16px; overflow: auto; }
+    #modalMeta { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
+    .comp-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+    .comp-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; padding: 10px;
+      border: 1px solid #e8e8e8; border-radius: 8px;
+      min-width: 88px; background: #fafafa;
     }
-    #compoundModalMeta { margin: 0 0 12px; color: #666; font-size: 0.9rem; }
-    #compoundModalGrid { display: flex; flex-wrap: wrap; gap: 14px; }
+    .comp-card.clickable { cursor: pointer; }
+    .comp-card.clickable:hover { border-color: #90caf9; background: #f5f9ff; }
+    .comp-thumb {
+      width: 64px; height: 64px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: "Songti SC", serif;
+      font-size: 2rem;
+      background: #fff; border: 1px solid #eee; border-radius: 6px;
+      overflow: hidden;
+    }
+    .comp-thumb img { width: 64px; height: 64px; object-fit: contain; }
+    .comp-cap { font-size: 0.7rem; color: #555; text-align: center; }
+    .comp-cap code { display: block; font-size: 0.62rem; color: #999; margin-top: 2px; }
+    .empty { color: #999; font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <h1>SILIFON 汉字展示</h1>
-  <p class="subtitle">输入汉字，查看自制字体字形与甲骨文写法</p>
-  <div id="status">加载甲骨文数据…</div>
-
-  <div class="input-row">
-    <input id="charInput" type="text" maxlength="4" placeholder="字" autocomplete="off" />
-    <button id="btnShow">显示</button>
+  <div class="wrap">
+    <h1>SILIFON</h1>
+    <input id="textInput" type="text" placeholder="输入文本" autocomplete="off" />
+    <div class="out-label">硅体</div>
+    <div id="silifonOut"></div>
+    <p class="hint">点击单字查看字元结构</p>
   </div>
 
-  <div class="container" id="results" hidden>
-    <div class="section">
-      <h2 class="sec-title">字体字形</h2>
-      <div class="font-display" id="fontDisplay"></div>
-    </div>
-    <div class="section" id="jgSection" hidden>
-      <h2 class="sec-title" id="jgTitle">甲骨文写法</h2>
-      <div class="jg-grid" id="jgGrid"></div>
-    </div>
-
-    <div class="section" id="compSection" hidden>
-      <h2 class="sec-title" id="compTitle">字元结构<span id="compCharLabel" style="margin-left: 6px;"></span></h2>
-      <div id="compMeta" class="comp-meta"></div>
-      <div class="comp-grid" id="compGrid"></div>
-    </div>
-  </div>
-
-  <p class="hint" id="idleHint">输入一个汉字后点「显示」或按 Enter</p>
-
-  <div id="compoundModalOverlay" hidden>
-    <div id="compoundModal">
-      <div id="compoundModalHeader">
-        <div id="compoundModalTitle">字元结构</div>
-        <button id="compoundModalClose" type="button">关闭</button>
+  <div id="modalOverlay" hidden>
+    <div id="modal">
+      <div id="modalHead">
+        <span id="modalTitle">字元结构</span>
+        <button id="modalClose" type="button">关闭</button>
       </div>
-      <div id="compoundModalBody">
-        <div id="compoundModalMeta"></div>
-        <div id="compoundModalGrid"></div>
+      <div id="modalBody">
+        <div id="modalMeta"></div>
+        <div class="comp-grid" id="modalGrid"></div>
       </div>
     </div>
   </div>
 
   <script>
-    const FONTS = [
-      { family: 'Silifon', label: 'SILIFON 字体' },
-      { family: 'FZJiaGW', label: '方正甲骨文' }
-    ];
-
-    let jgData = null;
     let compData = null;
-    const statusEl = document.getElementById('status');
-    const charInput = document.getElementById('charInput');
-    const btnShow = document.getElementById('btnShow');
-    const results = document.getElementById('results');
-    const fontDisplay = document.getElementById('fontDisplay');
-    const jgSection = document.getElementById('jgSection');
-    const jgTitle = document.getElementById('jgTitle');
-    const jgGrid = document.getElementById('jgGrid');
-    const idleHint = document.getElementById('idleHint');
-    const compSection = document.getElementById('compSection');
-    const compCharLabel = document.getElementById('compCharLabel');
-    const compMeta = document.getElementById('compMeta');
-    const compGrid = document.getElementById('compGrid');
 
-    const compoundModalOverlay = document.getElementById('compoundModalOverlay');
-    const compoundModalTitle = document.getElementById('compoundModalTitle');
-    const compoundModalClose = document.getElementById('compoundModalClose');
-    const compoundModalMeta = document.getElementById('compoundModalMeta');
-    const compoundModalGrid = document.getElementById('compoundModalGrid');
-
-    let imeComposing = false;
-
-    fetch('jiaguwen.json')
-      .then(r => r.json())
-      .then(data => {
-        jgData = data;
-        statusEl.textContent = '甲骨文数据就绪（' + Object.keys(data).length + ' 字）';
-      })
-      .catch(e => {
-        statusEl.textContent = '甲骨文数据加载失败: ' + e.message;
-      });
+    const textInput = document.getElementById('textInput');
+    const silifonOut = document.getElementById('silifonOut');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMeta = document.getElementById('modalMeta');
+    const modalGrid = document.getElementById('modalGrid');
+    const modalClose = document.getElementById('modalClose');
 
     fetch('compound_structure.json')
       .then(r => r.json())
-      .then(data => {
-        compData = data;
-      })
-      .catch(() => {
-        compData = null;
-      });
+      .then(data => { compData = data; render(); })
+      .catch(() => { compData = {}; render(); });
 
-    function firstChar(s) {
-      s = (s || '').trim();
-      return [...s][0] || '';
+    function chars(s) {
+      return [...(s || '').trim()];
     }
 
     function svgDataUrl(svg) {
       return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    }
-
-    function show() {
-      if (imeComposing) return;
-      const ch = firstChar(charInput.value);
-      if (!ch) return;
-      charInput.value = ch;
-      idleHint.hidden = true;
-      results.hidden = false;
-
-      fontDisplay.innerHTML = '';
-      FONTS.forEach(f => {
-        const card = document.createElement('div');
-        card.className = 'font-card';
-        const box = document.createElement('div');
-        box.className = 'glyph-box';
-        box.style.fontFamily = "'" + f.family + "'";
-        box.textContent = ch;
-        const lbl = document.createElement('div');
-        lbl.className = 'font-label';
-        lbl.textContent = f.label;
-        card.appendChild(box);
-        card.appendChild(lbl);
-        fontDisplay.appendChild(card);
-      });
-
-      // system font reference
-      const sysCard = document.createElement('div');
-      sysCard.className = 'font-card';
-      const sysBox = document.createElement('div');
-      sysBox.className = 'glyph-box';
-      sysBox.style.fontFamily = '"Songti SC", "SimSun", serif';
-      sysBox.textContent = ch;
-      const sysLbl = document.createElement('div');
-      sysLbl.className = 'font-label';
-      sysLbl.textContent = '系统宋体';
-      sysCard.appendChild(sysBox);
-      sysCard.appendChild(sysLbl);
-      fontDisplay.appendChild(sysCard);
-
-      renderCompound(ch);
-
-      if (!jgData) {
-        jgSection.hidden = true;
-      } else {
-        const variants = jgData[ch];
-      if (!variants || !variants.length) {
-        jgSection.hidden = false;
-        jgTitle.textContent = '甲骨文写法 · ' + ch;
-        jgGrid.innerHTML = '<p class="empty">未收录「' + ch + '」的甲骨文</p>';
-      } else {
-        jgSection.hidden = false;
-        jgTitle.textContent = '甲骨文写法 · ' + ch + '（' + variants.length + ' 个变体）';
-        jgGrid.innerHTML = '';
-        variants.forEach(v => {
-          const card = document.createElement('div');
-          card.className = 'jg-card';
-          const thumb = document.createElement('div');
-          thumb.className = 'jg-thumb';
-          const img = document.createElement('img');
-          img.src = svgDataUrl(v.svg);
-          img.alt = ch + ' ' + v.label;
-          img.loading = 'lazy';
-          thumb.appendChild(img);
-          const lbl = document.createElement('div');
-          lbl.className = 'jg-label';
-          lbl.textContent = v.label + ' · 表' + v.table;
-          card.appendChild(thumb);
-          card.appendChild(lbl);
-          jgGrid.appendChild(card);
-        });
-      }
-      }
-    }
-
-    function renderCompound(ch) {
-      if (!compData) {
-        compSection.hidden = true;
-        return;
-      }
-      const comp = compData[ch];
-      if (!comp) {
-        compSection.hidden = true;
-        return;
-      }
-      compSection.hidden = false;
-      compCharLabel.textContent = ' · ' + ch;
-      renderCompoundCards(comp, compGrid, ch, []);
     }
 
     function escapeHtml(s) {
@@ -375,15 +159,27 @@
       return d.innerHTML;
     }
 
-    function canOpenCompound(compName, stack) {
-      if (!compName) return false;
-      if (!compData || !compData[compName]) return false;
-      // 简单循环保护
-      if (stack && stack.includes(compName)) return false;
-      return true;
+    function render() {
+      const list = chars(textInput.value);
+      silifonOut.innerHTML = '';
+      if (!list.length) return;
+
+      list.forEach(ch => {
+        const el = document.createElement('span');
+        el.className = 'glyph';
+        el.textContent = ch;
+        const hasStruct = compData && compData[ch];
+        if (!hasStruct) el.classList.add('no-structure');
+        else el.addEventListener('click', () => openStructure(ch, []));
+        silifonOut.appendChild(el);
+      });
     }
 
-    function buildCompCard(c, rootChar, stack, onOpenCompound) {
+    function canOpen(name, stack) {
+      return name && compData && compData[name] && !(stack || []).includes(name);
+    }
+
+    function buildCompCard(c, stack) {
       const card = document.createElement('div');
       card.className = 'comp-card';
 
@@ -392,118 +188,72 @@
       if (c.svg) {
         const img = document.createElement('img');
         img.src = svgDataUrl(c.svg);
-        img.alt = (c.name || c.ref || '') + ' ' + rootChar;
-        img.loading = 'lazy';
+        img.alt = c.name || '';
         thumb.appendChild(img);
       } else {
-        const ph = document.createElement('div');
-        ph.textContent = c.name || '无缩略图';
-        ph.style.fontSize = c.kind === 'compound' ? '2rem' : '0.75rem';
-        ph.style.fontFamily = c.kind === 'compound' ? '"Songti SC", "SimSun", serif' : 'inherit';
-        ph.style.color = c.kind === 'compound' ? '#333' : '#aaa';
-        ph.style.textAlign = 'center';
-        ph.style.padding = '0 6px';
-        thumb.appendChild(ph);
+        thumb.textContent = c.name || '—';
+        if (c.kind !== 'compound') {
+          thumb.style.fontSize = '0.75rem';
+          thumb.style.color = '#aaa';
+        }
       }
 
       const cap = document.createElement('div');
-      cap.className = 'comp-caption';
-      const name = c.name || '';
-      const kind = c.kind || '';
-      cap.innerHTML =
-        '<div>' + escapeHtml(kind + (name ? ' · ' + name : '')) + '</div>' +
+      cap.className = 'comp-cap';
+      cap.innerHTML = escapeHtml(c.name || c.ref || '') +
         (c.ref ? '<code>' + escapeHtml(c.ref) + '</code>' : '');
 
       card.appendChild(thumb);
       card.appendChild(cap);
 
-      // 如果该构件本身是复合字（kind=compound），允许点击递归弹窗
-      if (c.kind === 'compound') {
-        const targetName = c.name || '';
-        const badge = document.createElement('div');
-        badge.className = 'comp-kind-badge';
-        badge.textContent = '复合字';
-        cap.appendChild(badge);
-        if (canOpenCompound(targetName, stack)) {
-          card.classList.add('comp-clickable');
-          const openBtn = document.createElement('button');
-          openBtn.type = 'button';
-          openBtn.className = 'comp-open-btn';
-          openBtn.textContent = '查看子结构';
-          openBtn.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            onOpenCompound && onOpenCompound(targetName, stack);
-          });
-          card.appendChild(openBtn);
-          card.addEventListener('click', () => onOpenCompound && onOpenCompound(targetName, stack));
-        }
+      if (c.kind === 'compound' && canOpen(c.name, stack)) {
+        card.classList.add('clickable');
+        card.addEventListener('click', () => openStructure(c.name, stack));
       }
       return card;
     }
 
-    function renderCompoundCards(comp, gridEl, rootChar, stack) {
-      const comps = comp.components || [];
-      const struct = comp.structure || '';
-      let meta = '结构：' + struct + ' · 共 ' + comps.length + ' 个构件';
-      if (comp.meaning) meta += ' · 本义：' + comp.meaning;
+    function openStructure(ch, stack) {
+      const comp = compData && compData[ch];
+      modalTitle.textContent = '字元结构 · ' + ch;
+      modalOverlay.hidden = false;
+      modalGrid.innerHTML = '';
 
-      // 如果在主面板里渲染，使用 compMeta；如果在 modal 里渲染，则目标元素不同
-      if (gridEl === compGrid) compMeta.textContent = meta;
-      if (gridEl === compoundModalGrid) compoundModalMeta.textContent = meta;
-
-      gridEl.innerHTML = '';
-      if (!comps.length) return;
-
-      comps.forEach(c => {
-        const card = buildCompCard(
-          c,
-          rootChar,
-          stack,
-          (targetName, prevStack) => openCompoundModal(targetName, prevStack || [])
-        );
-        gridEl.appendChild(card);
-      });
-    }
-
-    function openCompoundModal(rootName, stack) {
-      if (!compData || !compData[rootName]) {
+      if (!comp) {
+        modalMeta.textContent = '';
+        modalGrid.innerHTML = '<p class="empty">暂无结构数据</p>';
         return;
       }
-      const prev = Array.isArray(stack) ? stack.slice() : [];
-      // 将当前根加入栈
-      if (!prev.includes(rootName)) prev.push(rootName);
 
-      const comp = compData[rootName];
-      compoundModalTitle.textContent = '字元结构 · ' + rootName;
-      compoundModalOverlay.hidden = false;
+      const comps = comp.components || [];
+      let meta = (comp.structure || '') + ' · ' + comps.length + ' 个构件';
+      if (comp.meaning) meta += ' · ' + comp.meaning;
+      modalMeta.textContent = meta;
 
-      compoundModalGrid.innerHTML = '';
-      compoundModalMeta.textContent = '';
-      renderCompoundCards(comp, compoundModalGrid, rootName, prev);
+      const nextStack = stack.slice();
+      if (!nextStack.includes(ch)) nextStack.push(ch);
+
+      comps.forEach(c => modalGrid.appendChild(buildCompCard(c, nextStack)));
     }
 
-    compoundModalClose.addEventListener('click', () => {
-      compoundModalOverlay.hidden = true;
-    });
-    compoundModalOverlay.addEventListener('click', (e) => {
-      if (e.target === compoundModalOverlay) compoundModalOverlay.hidden = true;
+    modalClose.addEventListener('click', () => { modalOverlay.hidden = true; });
+    modalOverlay.addEventListener('click', e => {
+      if (e.target === modalOverlay) modalOverlay.hidden = true;
     });
 
-    charInput.addEventListener('compositionstart', () => { imeComposing = true; });
-    charInput.addEventListener('compositionend', () => { imeComposing = false; });
-    charInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); show(); }
-    });
-    btnShow.addEventListener('click', show);
+    let composing = false;
+    textInput.addEventListener('compositionstart', () => { composing = true; });
+    textInput.addEventListener('compositionend', () => { composing = false; render(); });
+    textInput.addEventListener('input', () => { if (!composing) render(); });
 
     const q = new URLSearchParams(location.search);
-    const initChar = firstChar(q.get('char'));
-    if (initChar) {
-      charInput.value = initChar;
-      const tryInit = setInterval(() => {
-        if (jgData !== null) { clearInterval(tryInit); show(); }
-      }, 100);
-      setTimeout(() => clearInterval(tryInit), 10000);
+    const init = q.get('text') || q.get('char') || '';
+    if (init) {
+      textInput.value = init;
+      const wait = setInterval(() => {
+        if (compData !== null) { clearInterval(wait); render(); }
+      }, 50);
+      setTimeout(() => clearInterval(wait), 5000);
     }
   </script>
 </body>
