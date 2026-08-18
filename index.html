@@ -94,6 +94,25 @@
     }
     #modalBody { padding: 16px; overflow: auto; }
     #modalMeta { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
+    #jgBlock { margin: 0 0 16px; }
+    #jgBlock[hidden] { display: none; }
+    #jgLabel { font-size: 0.8rem; color: #888; margin: 0 0 8px; }
+    #jgGrid {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .jg-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px;
+    }
+    .jg-thumb {
+      width: 72px; height: 72px;
+      background: #d7d5d0;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .jg-thumb img { width: 72px; height: 72px; object-fit: contain; }
+    .jg-cap { font-size: 0.62rem; color: #888; max-width: 80px; text-align: center; }
     .comp-grid { display: flex; flex-wrap: wrap; gap: 12px; }
     .comp-card {
       display: flex; flex-direction: column; align-items: center;
@@ -146,6 +165,10 @@
         <button id="modalClose" type="button">关闭</button>
       </div>
       <div id="modalBody">
+        <div id="jgBlock" hidden>
+          <div id="jgLabel">甲骨文</div>
+          <div id="jgGrid"></div>
+        </div>
         <div id="modalMeta"></div>
         <div class="comp-grid" id="modalGrid"></div>
       </div>
@@ -154,6 +177,7 @@
 
   <script>
     let compData = null;
+    let jgData = null;
     const loadedFonts = new Map();
     let currentFontKey = 'silifon';
 
@@ -172,11 +196,19 @@
     const modalMeta = document.getElementById('modalMeta');
     const modalGrid = document.getElementById('modalGrid');
     const modalClose = document.getElementById('modalClose');
+    const jgBlock = document.getElementById('jgBlock');
+    const jgLabel = document.getElementById('jgLabel');
+    const jgGrid = document.getElementById('jgGrid');
 
     fetch('compound_structure.json?v=' + FONT_VERSION)
       .then(r => r.json())
       .then(data => { compData = data; render(); })
       .catch(() => { compData = {}; render(); });
+
+    fetch('jiaguwen.json?v=' + FONT_VERSION)
+      .then(r => r.json())
+      .then(data => { jgData = data; })
+      .catch(() => { jgData = {}; });
 
     function fontFamilyId(key) {
       return 'Silifon-' + key + '-' + FONT_VERSION;
@@ -283,11 +315,40 @@
       return card;
     }
 
+    function renderJiaguwen(ch) {
+      const variants = jgData && jgData[ch];
+      jgGrid.innerHTML = '';
+      if (!variants || !variants.length) {
+        jgBlock.hidden = true;
+        return;
+      }
+      jgBlock.hidden = false;
+      jgLabel.textContent = '甲骨文 · ' + ch + '（' + variants.length + '）';
+      variants.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'jg-card';
+        const thumb = document.createElement('div');
+        thumb.className = 'jg-thumb';
+        const img = document.createElement('img');
+        img.src = svgDataUrl(v.svg);
+        img.alt = ch + ' ' + (v.label || '');
+        img.loading = 'lazy';
+        thumb.appendChild(img);
+        const cap = document.createElement('div');
+        cap.className = 'jg-cap';
+        cap.textContent = v.label || ('表' + v.table);
+        card.appendChild(thumb);
+        card.appendChild(cap);
+        jgGrid.appendChild(card);
+      });
+    }
+
     function openStructure(ch, stack) {
       const comp = compData && compData[ch];
       modalTitle.textContent = '字元结构 · ' + ch;
       modalOverlay.hidden = false;
       modalGrid.innerHTML = '';
+      renderJiaguwen(ch);
 
       if (!comp) {
         modalMeta.textContent = '';
