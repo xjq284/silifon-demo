@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SILIFON</title>
   <style>
-    @font-face { font-family: 'Silifon'; src: url('fonts/silifon.ttf'); }
-
     :root { font-family: system-ui, -apple-system, sans-serif; }
     * { box-sizing: border-box; }
     body {
@@ -15,7 +13,19 @@
       min-height: 100vh;
     }
     .wrap { max-width: 720px; margin: 0 auto; }
-    h1 { font-size: 1.25rem; margin: 0 0 20px; font-weight: 600; }
+    h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 600; }
+
+    .opts {
+      display: flex; flex-wrap: wrap; gap: 16px 24px;
+      margin-bottom: 16px; align-items: flex-end;
+    }
+    .opt label {
+      display: block; font-size: 0.75rem; color: #666; margin-bottom: 4px;
+    }
+    .opt select, .opt input[type="number"] {
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: 0.9rem; min-width: 100px;
+    }
 
     #textInput {
       width: 100%;
@@ -40,8 +50,8 @@
       line-height: 1;
     }
     .glyph {
-      font-family: 'Silifon', serif;
-      font-size: 3rem;
+      font-family: var(--silifon-family, serif);
+      font-size: var(--glyph-size, 3rem);
       padding: 8px 10px;
       border: 1px solid transparent;
       border-radius: 8px;
@@ -110,6 +120,19 @@
 <body>
   <div class="wrap">
     <h1>SILIFON</h1>
+    <div class="opts">
+      <div class="opt">
+        <label for="fontSize">字体大小</label>
+        <input id="fontSize" type="number" min="24" max="120" step="4" value="48" />
+      </div>
+      <div class="opt">
+        <label for="fontFile">字体文件</label>
+        <select id="fontFile">
+          <option value="silifon">silifon</option>
+          <option value="silifon1">silifon1</option>
+        </select>
+      </div>
+    </div>
     <input id="textInput" type="text" placeholder="输入文本" autocomplete="off" />
     <div class="out-label">硅体</div>
     <div id="silifonOut"></div>
@@ -131,8 +154,17 @@
 
   <script>
     let compData = null;
+    const loadedFonts = new Map();
+    let currentFontKey = 'silifon';
+
+    const FONT_FILES = {
+      silifon: 'fonts/silifon.ttf',
+      silifon1: 'fonts/silifon1.ttf',
+    };
 
     const textInput = document.getElementById('textInput');
+    const fontSizeInput = document.getElementById('fontSize');
+    const fontFileSelect = document.getElementById('fontFile');
     const silifonOut = document.getElementById('silifonOut');
     const modalOverlay = document.getElementById('modalOverlay');
     const modalTitle = document.getElementById('modalTitle');
@@ -144,6 +176,42 @@
       .then(r => r.json())
       .then(data => { compData = data; render(); })
       .catch(() => { compData = {}; render(); });
+
+    function fontFamilyId(key) {
+      return 'Silifon-' + key;
+    }
+
+    async function ensureFont(key) {
+      if (loadedFonts.has(key)) return loadedFonts.get(key);
+      const url = FONT_FILES[key];
+      if (!url) throw new Error('未知字体');
+      const face = new FontFace(fontFamilyId(key), 'url(' + url + ')');
+      await face.load();
+      document.fonts.add(face);
+      loadedFonts.set(key, face);
+      return face;
+    }
+
+    function readFontSize() {
+      const n = parseInt(fontSizeInput.value, 10);
+      if (!Number.isFinite(n)) return 48;
+      return Math.min(120, Math.max(24, n));
+    }
+
+    function applyDisplayStyle() {
+      const px = readFontSize();
+      fontSizeInput.value = String(px);
+      silifonOut.style.setProperty('--glyph-size', px + 'px');
+      silifonOut.style.setProperty('--silifon-family', "'" + fontFamilyId(currentFontKey) + "', serif");
+    }
+
+    async function setFontFile(key) {
+      currentFontKey = key in FONT_FILES ? key : 'silifon';
+      fontFileSelect.value = currentFontKey;
+      await ensureFont(currentFontKey);
+      applyDisplayStyle();
+      render();
+    }
 
     function chars(s) {
       return [...(s || '').trim()];
@@ -160,6 +228,7 @@
     }
 
     function render() {
+      applyDisplayStyle();
       const list = chars(textInput.value);
       silifonOut.innerHTML = '';
       if (!list.length) return;
@@ -245,6 +314,12 @@
     textInput.addEventListener('compositionstart', () => { composing = true; });
     textInput.addEventListener('compositionend', () => { composing = false; render(); });
     textInput.addEventListener('input', () => { if (!composing) render(); });
+    fontSizeInput.addEventListener('input', () => render());
+    fontFileSelect.addEventListener('change', () => {
+      setFontFile(fontFileSelect.value).catch(() => {});
+    });
+
+    ensureFont('silifon').then(() => applyDisplayStyle()).catch(() => {});
 
     const q = new URLSearchParams(location.search);
     const init = q.get('text') || q.get('char') || '';
