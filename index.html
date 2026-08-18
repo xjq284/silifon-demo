@@ -105,6 +105,27 @@
       display: block; font-size: 0.62rem; color: #888; margin-top: 3px;
       word-break: break-all;
     }
+    .comp-kind-badge {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eef5ff;
+      color: #1565c0;
+      font-size: 0.66rem;
+      font-weight: 600;
+    }
+    .comp-open-btn {
+      margin-top: 8px;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: #1565c0;
+      color: #fff;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .comp-open-btn:hover { background: #1256a8; }
 
     .comp-clickable { cursor: pointer; }
     .comp-clickable:hover { border-color: #90caf9; background: #f7fbff; }
@@ -376,9 +397,10 @@
         thumb.appendChild(img);
       } else {
         const ph = document.createElement('div');
-        ph.textContent = '无缩略图';
-        ph.style.fontSize = '0.75rem';
-        ph.style.color = '#aaa';
+        ph.textContent = c.name || '无缩略图';
+        ph.style.fontSize = c.kind === 'compound' ? '2rem' : '0.75rem';
+        ph.style.fontFamily = c.kind === 'compound' ? '"Songti SC", "SimSun", serif' : 'inherit';
+        ph.style.color = c.kind === 'compound' ? '#333' : '#aaa';
         ph.style.textAlign = 'center';
         ph.style.padding = '0 6px';
         thumb.appendChild(ph);
@@ -398,11 +420,22 @@
       // 如果该构件本身是复合字（kind=compound），允许点击递归弹窗
       if (c.kind === 'compound') {
         const targetName = c.name || '';
+        const badge = document.createElement('div');
+        badge.className = 'comp-kind-badge';
+        badge.textContent = '复合字';
+        cap.appendChild(badge);
         if (canOpenCompound(targetName, stack)) {
           card.classList.add('comp-clickable');
+          const openBtn = document.createElement('button');
+          openBtn.type = 'button';
+          openBtn.className = 'comp-open-btn';
+          openBtn.textContent = '查看子结构';
+          openBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            onOpenCompound && onOpenCompound(targetName, stack);
+          });
+          card.appendChild(openBtn);
           card.addEventListener('click', () => onOpenCompound && onOpenCompound(targetName, stack));
-        } else {
-          // 没有结构数据或出现循环时，不做点击
         }
       }
       return card;
