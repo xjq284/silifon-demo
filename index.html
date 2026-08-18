@@ -83,6 +83,28 @@
     .hint { font-size: 0.85rem; color: #999; margin-top: 20px; }
     .loading { font-size: 0.9rem; color: #888; padding: 20px 0; }
     #status { font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+
+    .comp-meta { font-size: 0.85rem; color: #666; margin: 0 0 12px; line-height: 1.5; }
+    .comp-grid { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+    .comp-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; padding: 12px 10px;
+      background: #fff; border: 1px solid #e8e8e8;
+      border-radius: 10px; min-width: 120px;
+    }
+    .comp-thumb {
+      width: 96px; height: 96px;
+      display: flex; align-items: center; justify-content: center;
+      background: #fafafa;
+      border: 1px solid #eee; border-radius: 8px;
+      overflow: hidden;
+    }
+    .comp-thumb img { width: 96px; height: 96px; object-fit: contain; }
+    .comp-caption { font-size: 0.72rem; color: #444; text-align: center; }
+    .comp-caption code {
+      display: block; font-size: 0.62rem; color: #888; margin-top: 3px;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -104,6 +126,12 @@
       <h2 class="sec-title" id="jgTitle">甲骨文写法</h2>
       <div class="jg-grid" id="jgGrid"></div>
     </div>
+
+    <div class="section" id="compSection" hidden>
+      <h2 class="sec-title" id="compTitle">字元结构<span id="compCharLabel" style="margin-left: 6px;"></span></h2>
+      <div id="compMeta" class="comp-meta"></div>
+      <div class="comp-grid" id="compGrid"></div>
+    </div>
   </div>
 
   <p class="hint" id="idleHint">输入一个汉字后点「显示」或按 Enter</p>
@@ -115,6 +143,7 @@
     ];
 
     let jgData = null;
+    let compData = null;
     const statusEl = document.getElementById('status');
     const charInput = document.getElementById('charInput');
     const btnShow = document.getElementById('btnShow');
@@ -124,6 +153,10 @@
     const jgTitle = document.getElementById('jgTitle');
     const jgGrid = document.getElementById('jgGrid');
     const idleHint = document.getElementById('idleHint');
+    const compSection = document.getElementById('compSection');
+    const compCharLabel = document.getElementById('compCharLabel');
+    const compMeta = document.getElementById('compMeta');
+    const compGrid = document.getElementById('compGrid');
 
     let imeComposing = false;
 
@@ -135,6 +168,15 @@
       })
       .catch(e => {
         statusEl.textContent = '甲骨文数据加载失败: ' + e.message;
+      });
+
+    fetch('compound_structure.json')
+      .then(r => r.json())
+      .then(data => {
+        compData = data;
+      })
+      .catch(() => {
+        compData = null;
       });
 
     function firstChar(s) {
@@ -184,37 +226,100 @@
       sysCard.appendChild(sysLbl);
       fontDisplay.appendChild(sysCard);
 
+      renderCompound(ch);
+
       if (!jgData) {
         jgSection.hidden = true;
-        return;
-      }
-      const variants = jgData[ch];
+      } else {
+        const variants = jgData[ch];
       if (!variants || !variants.length) {
         jgSection.hidden = false;
         jgTitle.textContent = '甲骨文写法 · ' + ch;
         jgGrid.innerHTML = '<p class="empty">未收录「' + ch + '」的甲骨文</p>';
+      } else {
+        jgSection.hidden = false;
+        jgTitle.textContent = '甲骨文写法 · ' + ch + '（' + variants.length + ' 个变体）';
+        jgGrid.innerHTML = '';
+        variants.forEach(v => {
+          const card = document.createElement('div');
+          card.className = 'jg-card';
+          const thumb = document.createElement('div');
+          thumb.className = 'jg-thumb';
+          const img = document.createElement('img');
+          img.src = svgDataUrl(v.svg);
+          img.alt = ch + ' ' + v.label;
+          img.loading = 'lazy';
+          thumb.appendChild(img);
+          const lbl = document.createElement('div');
+          lbl.className = 'jg-label';
+          lbl.textContent = v.label + ' · 表' + v.table;
+          card.appendChild(thumb);
+          card.appendChild(lbl);
+          jgGrid.appendChild(card);
+        });
+      }
+      }
+    }
+
+    function renderCompound(ch) {
+      if (!compData) {
+        compSection.hidden = true;
         return;
       }
-      jgSection.hidden = false;
-      jgTitle.textContent = '甲骨文写法 · ' + ch + '（' + variants.length + ' 个变体）';
-      jgGrid.innerHTML = '';
-      variants.forEach(v => {
+      const comp = compData[ch];
+      if (!comp) {
+        compSection.hidden = true;
+        return;
+      }
+      compSection.hidden = false;
+      compCharLabel.textContent = ' · ' + ch;
+      const comps = comp.components || [];
+      const struct = comp.structure || '';
+      let meta = '结构：' + struct + ' · 共 ' + comps.length + ' 个构件';
+      if (comp.meaning) meta += ' · 本义：' + comp.meaning;
+      compMeta.textContent = meta;
+
+      compGrid.innerHTML = '';
+      if (!comps.length) return;
+      comps.forEach(c => {
         const card = document.createElement('div');
-        card.className = 'jg-card';
+        card.className = 'comp-card';
+
         const thumb = document.createElement('div');
-        thumb.className = 'jg-thumb';
-        const img = document.createElement('img');
-        img.src = svgDataUrl(v.svg);
-        img.alt = ch + ' ' + v.label;
-        img.loading = 'lazy';
-        thumb.appendChild(img);
-        const lbl = document.createElement('div');
-        lbl.className = 'jg-label';
-        lbl.textContent = v.label + ' · 表' + v.table;
+        thumb.className = 'comp-thumb';
+        if (c.svg) {
+          const img = document.createElement('img');
+          img.src = svgDataUrl(c.svg);
+          img.alt = (c.name || c.ref || '') + ' ' + ch;
+          img.loading = 'lazy';
+          thumb.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.textContent = '无缩略图';
+          ph.style.fontSize = '0.75rem';
+          ph.style.color = '#aaa';
+          ph.style.textAlign = 'center';
+          ph.style.padding = '0 6px';
+          thumb.appendChild(ph);
+        }
+
+        const cap = document.createElement('div');
+        cap.className = 'comp-caption';
+        const name = c.name || '';
+        const kind = c.kind || '';
+        cap.innerHTML = '<div>' + escapeHtml(kind + (name ? ' · ' + name : '')) + '</div>' +
+          (c.ref ? '<code>' + escapeHtml(c.ref) + '</code>' : '');
+
         card.appendChild(thumb);
-        card.appendChild(lbl);
-        jgGrid.appendChild(card);
+        card.appendChild(cap);
+        compGrid.appendChild(card);
       });
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
     }
 
     charInput.addEventListener('compositionstart', () => { imeComposing = true; });
