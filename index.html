@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SILIFON 汉字展示</title>
+  <style>
+    @font-face { font-family: 'Silifon'; src: url('fonts/silifon.ttf'); }
+    @font-face { font-family: 'FZJiaGW'; src: url('fonts/FZJiaGW.TTF'); }
+
+    :root { font-family: system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px 24px;
+      background: #f8f8f8; color: #222;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; font-weight: 700; }
+    .subtitle { font-size: 0.82rem; color: #666; margin: 0 0 24px; }
+    .input-row {
+      display: flex; gap: 10px; align-items: center;
+      margin-bottom: 28px;
+    }
+    #charInput {
+      width: 5rem; font-size: 2rem; text-align: center;
+      padding: 8px 12px; border-radius: 10px;
+      border: 1.5px solid #bbb; outline: none;
+      font-family: "Songti SC", "SimSun", serif;
+    }
+    #charInput:focus { border-color: #1565c0; }
+    #btnShow {
+      padding: 10px 22px; font-size: 1rem;
+      border: none; border-radius: 10px;
+      background: #1565c0; color: #fff;
+      cursor: pointer; font-weight: 500;
+    }
+    #btnShow:hover { background: #1256a8; }
+    .container { width: 100%; max-width: 900px; }
+    .section { margin-bottom: 28px; }
+    .sec-title {
+      font-size: 1rem; font-weight: 600;
+      margin: 0 0 12px; color: #333;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 6px;
+    }
+    .font-display {
+      display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+    }
+    .font-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; padding: 14px 16px;
+      background: #fff; border: 1px solid #e8e8e8;
+      border-radius: 10px; min-width: 120px;
+    }
+    .glyph-box {
+      width: 96px; height: 96px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 80px; line-height: 1;
+      border: 1px solid #eee; border-radius: 6px;
+      background: #fafafa;
+    }
+    .font-label { font-size: 0.75rem; color: #666; }
+    .jg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .jg-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; padding: 10px;
+      background: #fff; border: 1px solid #e8e8e8;
+      border-radius: 10px;
+    }
+    .jg-thumb {
+      width: 96px; height: 96px;
+      display: flex; align-items: center; justify-content: center;
+      background: #d7d5d0; border-radius: 6px; overflow: hidden;
+    }
+    .jg-thumb img { width: 96px; height: 96px; object-fit: contain; }
+    .jg-label { font-size: 0.68rem; color: #555; text-align: center; }
+    .empty { font-size: 0.88rem; color: #999; padding: 16px 0; }
+    .hint { font-size: 0.85rem; color: #999; margin-top: 20px; }
+    .loading { font-size: 0.9rem; color: #888; padding: 20px 0; }
+    #status { font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>SILIFON 汉字展示</h1>
+  <p class="subtitle">输入汉字，查看自制字体字形与甲骨文写法</p>
+  <div id="status">加载甲骨文数据…</div>
+
+  <div class="input-row">
+    <input id="charInput" type="text" maxlength="4" placeholder="字" autocomplete="off" />
+    <button id="btnShow">显示</button>
+  </div>
+
+  <div class="container" id="results" hidden>
+    <div class="section">
+      <h2 class="sec-title">字体字形</h2>
+      <div class="font-display" id="fontDisplay"></div>
+    </div>
+    <div class="section" id="jgSection" hidden>
+      <h2 class="sec-title" id="jgTitle">甲骨文写法</h2>
+      <div class="jg-grid" id="jgGrid"></div>
+    </div>
+  </div>
+
+  <p class="hint" id="idleHint">输入一个汉字后点「显示」或按 Enter</p>
+
+  <script>
+    const FONTS = [
+      { family: 'Silifon', label: 'SILIFON 字体' },
+      { family: 'FZJiaGW', label: '方正甲骨文' }
+    ];
+
+    let jgData = null;
+    const statusEl = document.getElementById('status');
+    const charInput = document.getElementById('charInput');
+    const btnShow = document.getElementById('btnShow');
+    const results = document.getElementById('results');
+    const fontDisplay = document.getElementById('fontDisplay');
+    const jgSection = document.getElementById('jgSection');
+    const jgTitle = document.getElementById('jgTitle');
+    const jgGrid = document.getElementById('jgGrid');
+    const idleHint = document.getElementById('idleHint');
+
+    let imeComposing = false;
+
+    fetch('jiaguwen.json')
+      .then(r => r.json())
+      .then(data => {
+        jgData = data;
+        statusEl.textContent = '甲骨文数据就绪（' + Object.keys(data).length + ' 字）';
+      })
+      .catch(e => {
+        statusEl.textContent = '甲骨文数据加载失败: ' + e.message;
+      });
+
+    function firstChar(s) {
+      s = (s || '').trim();
+      return [...s][0] || '';
+    }
+
+    function svgDataUrl(svg) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    function show() {
+      if (imeComposing) return;
+      const ch = firstChar(charInput.value);
+      if (!ch) return;
+      charInput.value = ch;
+      idleHint.hidden = true;
+      results.hidden = false;
+
+      fontDisplay.innerHTML = '';
+      FONTS.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'font-card';
+        const box = document.createElement('div');
+        box.className = 'glyph-box';
+        box.style.fontFamily = "'" + f.family + "'";
+        box.textContent = ch;
+        const lbl = document.createElement('div');
+        lbl.className = 'font-label';
+        lbl.textContent = f.label;
+        card.appendChild(box);
+        card.appendChild(lbl);
+        fontDisplay.appendChild(card);
+      });
+
+      // system font reference
+      const sysCard = document.createElement('div');
+      sysCard.className = 'font-card';
+      const sysBox = document.createElement('div');
+      sysBox.className = 'glyph-box';
+      sysBox.style.fontFamily = '"Songti SC", "SimSun", serif';
+      sysBox.textContent = ch;
+      const sysLbl = document.createElement('div');
+      sysLbl.className = 'font-label';
+      sysLbl.textContent = '系统宋体';
+      sysCard.appendChild(sysBox);
+      sysCard.appendChild(sysLbl);
+      fontDisplay.appendChild(sysCard);
+
+      if (!jgData) {
+        jgSection.hidden = true;
+        return;
+      }
+      const variants = jgData[ch];
+      if (!variants || !variants.length) {
+        jgSection.hidden = false;
+        jgTitle.textContent = '甲骨文写法 · ' + ch;
+        jgGrid.innerHTML = '<p class="empty">未收录「' + ch + '」的甲骨文</p>';
+        return;
+      }
+      jgSection.hidden = false;
+      jgTitle.textContent = '甲骨文写法 · ' + ch + '（' + variants.length + ' 个变体）';
+      jgGrid.innerHTML = '';
+      variants.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'jg-card';
+        const thumb = document.createElement('div');
+        thumb.className = 'jg-thumb';
+        const img = document.createElement('img');
+        img.src = svgDataUrl(v.svg);
+        img.alt = ch + ' ' + v.label;
+        img.loading = 'lazy';
+        thumb.appendChild(img);
+        const lbl = document.createElement('div');
+        lbl.className = 'jg-label';
+        lbl.textContent = v.label + ' · 表' + v.table;
+        card.appendChild(thumb);
+        card.appendChild(lbl);
+        jgGrid.appendChild(card);
+      });
+    }
+
+    charInput.addEventListener('compositionstart', () => { imeComposing = true; });
+    charInput.addEventListener('compositionend', () => { imeComposing = false; });
+    charInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); show(); }
+    });
+    btnShow.addEventListener('click', show);
+
+    const q = new URLSearchParams(location.search);
+    const initChar = firstChar(q.get('char'));
+    if (initChar) {
+      charInput.value = initChar;
+      const tryInit = setInterval(() => {
+        if (jgData !== null) { clearInterval(tryInit); show(); }
+      }, 100);
+      setTimeout(() => clearInterval(tryInit), 10000);
+    }
+  </script>
+</body>
+</html>
