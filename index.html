@@ -157,9 +157,10 @@
     const loadedFonts = new Map();
     let currentFontKey = 'silifon';
 
+    const FONT_VERSION = '20260818183022';
     const FONT_FILES = {
-      silifon: 'fonts/silifon.ttf',
-      silifon1: 'fonts/silifon1.ttf',
+      silifon: 'fonts/silifon.ttf?v=' + FONT_VERSION,
+      silifon1: 'fonts/silifon1.ttf?v=' + FONT_VERSION,
     };
 
     const textInput = document.getElementById('textInput');
@@ -172,13 +173,13 @@
     const modalGrid = document.getElementById('modalGrid');
     const modalClose = document.getElementById('modalClose');
 
-    fetch('compound_structure.json')
+    fetch('compound_structure.json?v=' + FONT_VERSION)
       .then(r => r.json())
       .then(data => { compData = data; render(); })
       .catch(() => { compData = {}; render(); });
 
     function fontFamilyId(key) {
-      return 'Silifon-' + key;
+      return 'Silifon-' + key + '-' + FONT_VERSION;
     }
 
     async function ensureFont(key) {
