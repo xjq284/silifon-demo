@@ -433,27 +433,30 @@
 
     function openStructure(ch, stack) {
       const comp = compData && compData[ch];
-      modalTitle.textContent = '字元结构 · ' + ch;
       modalOverlay.hidden = false;
       modalGrid.innerHTML = '';
-      renderVariants(ch);
-      renderJiaguwen(ch);
+      modalMeta.textContent = '';
 
-      if (!comp) {
-        modalMeta.textContent = '';
-        modalGrid.innerHTML = '<p class="empty">暂无结构数据</p>';
-        return;
+      if (comp) {
+        // 复合字：显示字元结构
+        modalTitle.textContent = '字元结构 · ' + ch;
+        varBlock.hidden = true;
+        jgBlock.hidden = true;
+
+        const comps = comp.components || [];
+        let meta = (comp.structure || '') + ' · ' + comps.length + ' 个构件';
+        if (comp.meaning) meta += ' · ' + comp.meaning;
+        modalMeta.textContent = meta;
+
+        const nextStack = stack.slice();
+        if (!nextStack.includes(ch)) nextStack.push(ch);
+        comps.forEach(c => modalGrid.appendChild(buildCompCard(c, nextStack)));
+      } else {
+        // 字元：显示甲骨文 + 多版本变体
+        modalTitle.textContent = '字元详情 · ' + ch;
+        renderVariants(ch);
+        renderJiaguwen(ch);
       }
-
-      const comps = comp.components || [];
-      let meta = (comp.structure || '') + ' · ' + comps.length + ' 个构件';
-      if (comp.meaning) meta += ' · ' + comp.meaning;
-      modalMeta.textContent = meta;
-
-      const nextStack = stack.slice();
-      if (!nextStack.includes(ch)) nextStack.push(ch);
-
-      comps.forEach(c => modalGrid.appendChild(buildCompCard(c, nextStack)));
     }
 
     modalClose.addEventListener('click', () => { modalOverlay.hidden = true; });
