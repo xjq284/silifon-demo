@@ -123,6 +123,24 @@
     }
     .jg-thumb img { width: 72px; height: 72px; object-fit: contain; }
     .jg-cap { font-size: 0.62rem; color: #888; max-width: 80px; text-align: center; }
+    #varBlock { margin: 0 0 16px; }
+    #varBlock[hidden] { display: none; }
+    #varLabel { font-size: 0.8rem; color: #888; margin: 0 0 8px; }
+    #varGrid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .var-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px;
+    }
+    .var-thumb {
+      width: 72px; height: 72px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .var-thumb img { width: 72px; height: 72px; object-fit: contain; }
+    .var-cap { font-size: 0.65rem; color: #555; }
     .comp-grid { display: flex; flex-wrap: wrap; gap: 12px; }
     .comp-card {
       display: flex; flex-direction: column; align-items: center;
@@ -175,6 +193,10 @@
         <button id="modalClose" type="button">关闭</button>
       </div>
       <div id="modalBody">
+        <div id="varBlock" hidden>
+          <div id="varLabel">字元版本</div>
+          <div id="varGrid"></div>
+        </div>
         <div id="jgBlock" hidden>
           <div id="jgLabel">甲骨文</div>
           <div id="jgGrid"></div>
@@ -188,6 +210,7 @@
   <script>
     let compData = null;
     let jgData = null;
+    let varData = null;
     const loadedFonts = new Map();
     let currentFontKey = 'silifon';
 
@@ -213,6 +236,9 @@
     const jgBlock = document.getElementById('jgBlock');
     const jgLabel = document.getElementById('jgLabel');
     const jgGrid = document.getElementById('jgGrid');
+    const varBlock = document.getElementById('varBlock');
+    const varLabel = document.getElementById('varLabel');
+    const varGrid = document.getElementById('varGrid');
     const fontStatus = document.getElementById('fontStatus');
 
     fetch('compound_structure.json?v=' + FONT_VERSION)
@@ -224,6 +250,11 @@
       .then(r => r.json())
       .then(data => { jgData = data; })
       .catch(() => { jgData = {}; });
+
+    fetch('glyph_variants.json?v=' + FONT_VERSION)
+      .then(r => r.json())
+      .then(data => { varData = data; })
+      .catch(() => { varData = {}; });
 
     function fontFamilyId(key) {
       return FONT_FAMILIES[key] || FONT_FAMILIES.silifon;
@@ -373,11 +404,39 @@
       });
     }
 
+    function renderVariants(ch) {
+      const variants = varData && varData[ch];
+      varGrid.innerHTML = '';
+      if (!variants || variants.length < 2) {
+        varBlock.hidden = true;
+        return;
+      }
+      varBlock.hidden = false;
+      varLabel.textContent = '字元版本（' + variants.length + '）';
+      variants.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'var-card';
+        const thumb = document.createElement('div');
+        thumb.className = 'var-thumb';
+        const img = document.createElement('img');
+        img.src = svgDataUrl(v.svg);
+        img.alt = v.name;
+        thumb.appendChild(img);
+        const cap = document.createElement('div');
+        cap.className = 'var-cap';
+        cap.textContent = v.name;
+        card.appendChild(thumb);
+        card.appendChild(cap);
+        varGrid.appendChild(card);
+      });
+    }
+
     function openStructure(ch, stack) {
       const comp = compData && compData[ch];
       modalTitle.textContent = '字元结构 · ' + ch;
       modalOverlay.hidden = false;
       modalGrid.innerHTML = '';
+      renderVariants(ch);
       renderJiaguwen(ch);
 
       if (!comp) {
