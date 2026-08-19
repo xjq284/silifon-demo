@@ -215,6 +215,7 @@
     let currentFontKey = 'silifon';
 
     const FONT_VERSION = '20260818183022';
+    const DATA_VERSION = '20260819181800';
     const FONT_FAMILIES = {
       silifon: 'SilifonWeb',
       silifon1: 'Silifon1Web',
@@ -241,17 +242,17 @@
     const varGrid = document.getElementById('varGrid');
     const fontStatus = document.getElementById('fontStatus');
 
-    fetch('compound_structure.json?v=' + FONT_VERSION)
+    fetch('compound_structure.json?v=' + DATA_VERSION)
       .then(r => r.json())
       .then(data => { compData = data; render(); })
       .catch(() => { compData = {}; render(); });
 
-    fetch('jiaguwen.json?v=' + FONT_VERSION)
+    fetch('jiaguwen.json?v=' + DATA_VERSION)
       .then(r => r.json())
       .then(data => { jgData = data; })
       .catch(() => { jgData = {}; });
 
-    fetch('glyph_variants.json?v=' + FONT_VERSION)
+    fetch('glyph_variants.json?v=' + DATA_VERSION)
       .then(r => r.json())
       .then(data => { varData = data; })
       .catch(() => { varData = {}; });
@@ -424,7 +425,7 @@
         thumb.appendChild(img);
         const cap = document.createElement('div');
         cap.className = 'var-cap';
-        cap.textContent = v.name;
+        cap.textContent = v.name + (v.source ? ' · ' + v.source : '');
         card.appendChild(thumb);
         card.appendChild(cap);
         varGrid.appendChild(card);
