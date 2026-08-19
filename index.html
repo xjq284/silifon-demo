@@ -331,8 +331,8 @@
         const el = document.createElement('span');
         el.className = 'glyph';
         el.textContent = ch;
-        const hasStruct = compData && compData[ch];
-        if (!hasStruct) el.classList.add('no-structure');
+        const hasInfo = (compData && compData[ch]) || (varData && varData[ch]) || (jgData && jgData[ch]);
+        if (!hasInfo) el.classList.add('no-structure');
         else el.addEventListener('click', () => openStructure(ch, []));
         silifonOut.appendChild(el);
       });
