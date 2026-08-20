@@ -347,8 +347,11 @@
       });
     }
 
-    function canOpen(name, stack) {
-      return name && compData && compData[name] && !(stack || []).includes(name);
+    function canOpen(c, stack) {
+      const name = (c && c.name) || '';
+      if (!name || (stack || []).includes(name)) return false;
+      if (c.kind === 'compound') return !!(compData && compData[name]);
+      return true;
     }
 
     function buildCompCard(c, stack) {
@@ -378,7 +381,7 @@
       card.appendChild(thumb);
       card.appendChild(cap);
 
-      if (c.kind === 'compound' && canOpen(c.name, stack)) {
+      if (canOpen(c, stack)) {
         card.classList.add('clickable');
         card.addEventListener('click', () => openStructure(c.name, stack));
       }
@@ -462,6 +465,9 @@
         modalTitle.textContent = '字元详情 · ' + ch;
         renderVariants(ch);
         renderJiaguwen(ch);
+        if (varBlock.hidden && jgBlock.hidden) {
+          modalMeta.textContent = '暂无甲骨文或多版本数据';
+        }
       }
     }
 
