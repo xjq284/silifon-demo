@@ -7,12 +7,12 @@
   <style>
     @font-face {
       font-family: 'SilifonWeb';
-      src: url('fonts/silifon.ttf?v=20260820001950') format('truetype');
+      src: url('fonts/silifon.ttf?v=20260825101800') format('truetype');
       font-display: block;
     }
     @font-face {
       font-family: 'Silifon1Web';
-      src: url('fonts/silifon1.ttf?v=20260820001950') format('truetype');
+      src: url('fonts/silifon1.ttf?v=20260825101800') format('truetype');
       font-display: block;
     }
     :root { font-family: system-ui, -apple-system, sans-serif; }
@@ -78,7 +78,47 @@
     .glyph.no-structure { cursor: default; opacity: 0.85; }
     .glyph.no-structure:hover { border-color: transparent; background: #fff; }
 
-    .hint { margin-top: 16px; font-size: 0.8rem; color: #aaa; }
+    .hint { margin-top: 16px; font-size: 0.85rem; color: #666; line-height: 1.55; }
+    .hint strong { color: #333; font-weight: 600; }
+    .feedback {
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+    }
+    .feedback h2 { font-size: 1rem; margin: 0 0 8px; font-weight: 600; }
+    .feedback .lead { font-size: 0.85rem; color: #666; line-height: 1.5; margin: 0 0 14px; }
+    .feedback label {
+      display: block; font-size: 0.75rem; color: #666; margin: 0 0 4px;
+    }
+    .feedback textarea, .feedback input[type="text"] {
+      width: 100%;
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+    .feedback textarea:focus, .feedback input[type="text"]:focus { border-color: #1565c0; }
+    .feedback textarea { min-height: 72px; resize: vertical; }
+    #wishChars { font-family: "Songti SC", "SimSun", serif; font-size: 1.15rem; }
+    #wishSubmit {
+      border: none; background: #1565c0; color: #fff;
+      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
+    }
+    #wishSubmit:hover { background: #0d47a1; }
+    .wish-note { font-size: 0.75rem; color: #888; margin: 10px 0 0; }
+    #wishList { margin: 18px 0 0; padding: 0; list-style: none; }
+    #wishList li {
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
+    #wishList a { color: #1565c0; text-decoration: none; }
+    #wishList a:hover { text-decoration: underline; }
+    #wishList .meta { display: block; font-size: 0.75rem; color: #999; margin-top: 4px; }
+    #wishListStatus { font-size: 0.8rem; color: #888; margin: 8px 0 0; }
 
     /* 字元结构弹窗 */
     #modalOverlay {
@@ -189,7 +229,22 @@
     <input id="textInput" type="text" placeholder="输入文本" autocomplete="off" />
     <div class="out-label">硅体 <span id="fontStatus"></span></div>
     <div id="silifonOut"></div>
-    <p class="hint">点击单字查看字元结构 · 字体由网页加载，无需本机安装</p>
+    <p class="hint">
+      点击单字查看字元结构。字体由网页加载，无需本机安装。
+      <strong>第一次打开（或换用 silifon1）要下载数兆字体，可能要等十几秒甚至更久</strong>，请稍候再看字形。
+    </p>
+    <section class="feedback" aria-labelledby="wishTitle">
+      <h2 id="wishTitle">留言 · 希望哪些字做甲骨文化</h2>
+      <p class="lead">告诉我你最希望先补哪些字的甲骨文写法。提交会打开 GitHub Issue（需登录 GitHub）。</p>
+      <label for="wishChars">希望增加甲骨文的字</label>
+      <input id="wishChars" type="text" placeholder="例如：龍 鳳 車 馬" autocomplete="off" />
+      <label for="wishNote">说明（可选）</label>
+      <textarea id="wishNote" placeholder="为什么想看这些字，或有无参考字形"></textarea>
+      <button id="wishSubmit" type="button">提交留言</button>
+      <p class="wish-note">没有 GitHub 账号也可以先写下字，再复制到其他渠道发给我。</p>
+      <p id="wishListStatus"></p>
+      <ul id="wishList"></ul>
+    </section>
   </div>
 
   <div id="modalOverlay" hidden>
@@ -220,7 +275,9 @@
     const loadedFonts = new Map();
     let currentFontKey = 'silifon';
 
-    const FONT_VERSION = '20260820001950';
+    const FONT_VERSION = '20260825101800';
+    const WISH_REPO = 'xjq284/silifon-demo';
+    const WISH_TITLE_PREFIX = '甲骨文愿望：';
     const DATA_VERSION = '20260819181800';
     const FONT_FAMILIES = {
       silifon: 'SilifonWeb',
@@ -274,7 +331,7 @@
     async function ensureFont(key) {
       if (loadedFonts.has(key)) return loadedFonts.get(key);
       const family = fontFamilyId(key);
-      setFontStatus('加载网页字体…');
+      setFontStatus(loadedFonts.size ? '加载字体，请稍候…' : '首次加载字体较慢，请稍候…');
       try {
         if (document.fonts && document.fonts.load) {
           await document.fonts.load('48px "' + family + '"');
@@ -484,6 +541,71 @@
     fontFileSelect.addEventListener('change', () => {
       setFontFile(fontFileSelect.value).catch(() => {});
     });
+
+    const wishChars = document.getElementById('wishChars');
+    const wishNote = document.getElementById('wishNote');
+    const wishSubmit = document.getElementById('wishSubmit');
+    const wishList = document.getElementById('wishList');
+    const wishListStatus = document.getElementById('wishListStatus');
+
+    function openWishIssue() {
+      const charsText = (wishChars.value || '').trim();
+      const note = (wishNote.value || '').trim();
+      if (!charsText) {
+        wishChars.focus();
+        return;
+      }
+      const title = WISH_TITLE_PREFIX + charsText.slice(0, 40);
+      const body = '希望增加甲骨文的字：\n' + charsText +
+        (note ? '\n\n说明：\n' + note : '');
+      const url = 'https://github.com/' + WISH_REPO + '/issues/new?title=' +
+        encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
+      window.open(url, '_blank', 'noopener');
+    }
+
+    function loadWishList() {
+      wishListStatus.textContent = '正在读取已有留言…';
+      fetch('https://api.github.com/repos/' + WISH_REPO + '/issues?state=open&per_page=30')
+        .then(r => {
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.json();
+        })
+        .then(items => {
+          const wishes = (items || []).filter(it =>
+            !it.pull_request && String(it.title || '').startsWith(WISH_TITLE_PREFIX)
+          );
+          wishList.innerHTML = '';
+          if (!wishes.length) {
+            wishListStatus.textContent = '还没有留言，欢迎第一条。';
+            return;
+          }
+          wishListStatus.textContent = '最近留言';
+          wishes.forEach(it => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = it.html_url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = it.title;
+            const meta = document.createElement('span');
+            meta.className = 'meta';
+            const who = (it.user && it.user.login) ? it.user.login : '';
+            meta.textContent = who + (it.comments ? ' · ' + it.comments + ' 条讨论' : '');
+            li.appendChild(a);
+            li.appendChild(meta);
+            wishList.appendChild(li);
+          });
+        })
+        .catch(() => {
+          wishListStatus.textContent = '留言列表暂时读不到，仍可提交新愿望。';
+        });
+    }
+
+    wishSubmit.addEventListener('click', openWishIssue);
+    wishChars.addEventListener('keydown', e => {
+      if (e.key === 'Enter') openWishIssue();
+    });
+    loadWishList();
 
     ensureFont('silifon').then(() => { applyDisplayStyle(); render(); }).catch(() => {});
 
