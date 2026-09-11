@@ -244,10 +244,10 @@
       position: relative;
       width: var(--anim-size, 96px);
       height: var(--anim-size, 96px);
-      background: #fafafa;
-      border: 1px dashed #ddd;
+      background: #fff;
+      border: 1px solid #e0e0e0;
       border-radius: 8px;
-      overflow: hidden;
+      overflow: visible;
     }
     .anim-piece {
       position: absolute;
@@ -287,6 +287,7 @@
     #animStage canvas {
       display: block; width: 100%; height: 100%;
       background: #fff;
+      border-radius: 8px;
     }
   </style>
 </head>
@@ -715,8 +716,9 @@
 
     function introPose(index, total, size) {
       const mid = (total - 1) / 2;
-      const dx = (index - mid) * Math.min(size * 0.22, 36);
-      return { x: dx, y: -size * 0.08, scale: 0.42, scale_y: 0.42, rotate: 0, alpha: 0 };
+      const dx = (index - mid) * Math.min(size * 0.18, 28);
+      // 保持在画布内，避免上缘被裁切
+      return { x: dx, y: size * 0.08, scale: 0.4, scale_y: 0.4, rotate: 0, alpha: 0 };
     }
 
     function finalPose(tr, size) {
@@ -823,9 +825,15 @@
 
     function drawAnimFrame(ctx, assets, state) {
       const size = assets.size;
+      // 留边，避免笔画贴边/圆角裁切导致「画面偏上缺一截」
+      const pad = Math.max(3, size * 0.05);
+      const scale = (size - pad * 2) / size;
       ctx.clearRect(0, 0, size, size);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, size, size);
+      ctx.save();
+      ctx.translate(pad, pad);
+      ctx.scale(scale, scale);
       const n = assets.pieces.length;
       for (let i = 0; i < n; i++) {
         const pose = state.poses[i];
@@ -846,6 +854,7 @@
         ctx.fillText(assets.char, size / 2, size / 2);
         ctx.restore();
       }
+      ctx.restore();
     }
 
     function buildAnimTimeline(assets) {
