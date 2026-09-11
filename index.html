@@ -276,39 +276,17 @@
     .anim-piece.highlight {
       filter: drop-shadow(0 0 6px rgba(21, 101, 192, 0.45));
     }
-    #animExport, #animSolo {
-      border: none; background: #546e7a; color: #fff;
+    #animExport {
+      border: none; background: #2e7d32; color: #fff;
       border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
     }
-    #animExport:hover, #animSolo:hover { background: #455a64; }
-    #animExport { background: #2e7d32; }
     #animExport:hover { background: #1b5e20; }
-    .solo-bar { display: none; margin-bottom: 16px; }
-    .solo-bar a {
-      color: #1565c0; text-decoration: none; font-size: 0.9rem;
+    #animExport:disabled, #animPlay:disabled, #animReplay:disabled {
+      opacity: 0.55; cursor: wait;
     }
-    .solo-bar a:hover { text-decoration: underline; }
-    body.anim-solo {
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 24px 16px;
-      background: #f3f4f6;
-    }
-    body.anim-solo .wrap {
-      max-width: 920px; width: 100%;
-      background: #fff; border-radius: 16px;
-      padding: 28px 24px 32px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.06);
-    }
-    body.anim-solo .wrap > :not(.anim-mod) { display: none !important; }
-    body.anim-solo .anim-mod {
-      margin: 0; padding: 0; border: none;
-    }
-    body.anim-solo .solo-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    body.anim-solo .anim-stage-wrap {
-      padding: 28px; background: #fafafa;
-    }
-    body.anim-solo #animStage {
-      border-style: solid; border-color: #e0e0e0;
+    #animStage canvas {
+      display: block; width: 100%; height: 100%;
+      background: #fff;
     }
   </style>
 </head>
@@ -338,12 +316,8 @@
     </p>
 
     <section class="anim-mod" aria-labelledby="animTitle">
-      <div class="solo-bar">
-        <a id="animBackFull" href="./">← 返回完整页</a>
-        <span id="animSoloTitle" style="font-size:0.9rem;color:#666;"></span>
-      </div>
       <h2 id="animTitle">单字动画</h2>
-      <p class="lead">输入一个单字，按字元构形逐步复合展示（默认字号 96）。可单独显示或导出为独立 HTML。</p>
+      <p class="lead">输入一个单字，按字元构形逐步复合展示（默认字号 96）。可导出为 GIF。</p>
       <div class="anim-row">
         <div class="opt">
           <label for="animChar">单字</label>
@@ -355,8 +329,7 @@
         </div>
         <button id="animPlay" type="button">播放</button>
         <button id="animReplay" type="button">重播</button>
-        <button id="animSolo" type="button">单独显示</button>
-        <button id="animExport" type="button">导出 HTML</button>
+        <button id="animExport" type="button">导出 GIF</button>
       </div>
       <div id="animMeta"></div>
       <div class="anim-stage-wrap">
@@ -690,15 +663,13 @@
     const animSizeInput = document.getElementById('animSize');
     const animPlayBtn = document.getElementById('animPlay');
     const animReplayBtn = document.getElementById('animReplay');
-    const animSoloBtn = document.getElementById('animSolo');
     const animExportBtn = document.getElementById('animExport');
     const animStage = document.getElementById('animStage');
     const animMeta = document.getElementById('animMeta');
     const animStatus = document.getElementById('animStatus');
-    const animSoloTitle = document.getElementById('animSoloTitle');
-    let animTimer = 0;
     let animToken = 0;
-    const DEMO_ORIGIN = 'https://xjq284.github.io/silifon-demo';
+    let animBusy = false;
+    let gifencMod = null;
 
     function readAnimSize() {
       const n = parseInt(animSizeInput.value, 10);
@@ -709,18 +680,6 @@
     function readAnimChar() {
       const list = chars(animCharInput.value);
       return list.length ? list[0] : '';
-    }
-
-    function buildAnimSoloUrl(ch, size, fontKey) {
-      const u = new URL(location.href);
-      u.search = '';
-      u.hash = '';
-      u.searchParams.set('view', 'anim');
-      u.searchParams.set('char', ch);
-      u.searchParams.set('size', String(size));
-      u.searchParams.set('font', fontKey || currentFontKey);
-      u.searchParams.set('autoplay', '1');
-      return u.toString();
     }
 
     function waitAnimDataReady() {
@@ -739,396 +698,373 @@
       });
     }
 
-    function collectAnimExportPayload(ch) {
-      const info = (animData && animData[ch]) || null;
-      const struct = (compData && compData[ch]) || null;
-      const comps = (info && info.components) || [];
-      const svgList = (struct && struct.components) || [];
-      const components = comps.map((comp, i) => {
-        const byIndex = svgList[i];
-        const byName = svgList.find(s => s && s.name === comp.name);
-        const svg = (byIndex && byIndex.svg) || (byName && byName.svg) || null;
-        return {
-          name: comp.name,
-          kind: comp.kind,
-          transform: comp.transform,
-          svg: svg || null,
-        };
-      });
+    function setAnimBusy(busy) {
+      animBusy = !!busy;
+      animPlayBtn.disabled = animBusy;
+      animReplayBtn.disabled = animBusy;
+      animExportBtn.disabled = animBusy;
+    }
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function introPose(index, total, size) {
+      const mid = (total - 1) / 2;
+      const dx = (index - mid) * Math.min(size * 0.22, 36);
+      return { x: dx, y: -size * 0.08, scale: 0.42, scale_y: 0.42, rotate: 0, alpha: 0 };
+    }
+
+    function finalPose(tr, size) {
       return {
-        char: ch,
-        structure: (info && info.structure) || '',
-        components: components,
+        x: ((tr && tr.x) || 0) / 1000 * size,
+        y: ((tr && tr.y) || 0) / 1000 * size,
+        scale: (tr && tr.scale != null) ? tr.scale : 1,
+        scale_y: (tr && tr.scale_y != null) ? tr.scale_y : ((tr && tr.scale != null) ? tr.scale : 1),
+        rotate: (tr && tr.rotate) || 0,
+        alpha: 1,
       };
     }
 
-    function exportAnimHtml() {
+    function mixPose(a, b, t) {
+      return {
+        x: lerp(a.x, b.x, t),
+        y: lerp(a.y, b.y, t),
+        scale: lerp(a.scale, b.scale, t),
+        scale_y: lerp(a.scale_y, b.scale_y, t),
+        rotate: lerp(a.rotate, b.rotate, t),
+        alpha: lerp(a.alpha, b.alpha, t),
+      };
+    }
+
+    function loadSvgImage(svg) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = svgDataUrl(svg);
+      });
+    }
+
+    async function buildAnimAssets(ch, size) {
+      const info = animData && animData[ch];
+      const structComp = compData && compData[ch];
+      const svgList = (structComp && structComp.components) || [];
+      const comps = (info && info.components) || [];
+      const pieces = [];
+      for (let i = 0; i < comps.length; i++) {
+        const comp = comps[i];
+        const byIndex = svgList[i];
+        const byName = svgList.find(s => s && s.name === comp.name);
+        const svg = (byIndex && byIndex.svg) || (byName && byName.svg) || null;
+        let img = null;
+        if (svg) {
+          try { img = await loadSvgImage(svg); } catch (e) { img = null; }
+        }
+        pieces.push({
+          name: comp.name || '',
+          transform: comp.transform || {},
+          img: img,
+        });
+      }
+      return {
+        char: ch,
+        structure: (info && info.structure) || '',
+        pieces: pieces,
+        size: size,
+        family: fontFamilyId(currentFontKey),
+      };
+    }
+
+    function ensureAnimCanvas(size) {
+      animStage.style.setProperty('--anim-size', size + 'px');
+      let canvas = animStage.querySelector('canvas');
+      if (!canvas) {
+        animStage.innerHTML = '';
+        canvas = document.createElement('canvas');
+        animStage.appendChild(canvas);
+      }
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(size * dpr);
+      canvas.height = Math.round(size * dpr);
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { canvas: canvas, ctx: ctx, dpr: dpr };
+    }
+
+    function drawPiece(ctx, piece, pose, size, family, highlight) {
+      if (!pose || pose.alpha <= 0.01) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, pose.alpha));
+      ctx.translate(pose.x, pose.y);
+      ctx.rotate((pose.rotate || 0) * Math.PI / 180);
+      ctx.scale(pose.scale, pose.scale_y);
+      if (highlight) {
+        ctx.shadowColor = 'rgba(21, 101, 192, 0.45)';
+        ctx.shadowBlur = 8;
+      }
+      if (piece.img) {
+        ctx.drawImage(piece.img, 0, 0, size, size);
+      } else {
+        ctx.fillStyle = '#111';
+        ctx.font = size + 'px "' + family + '"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(piece.name || '·', size / 2, size / 2);
+      }
+      ctx.restore();
+    }
+
+    function drawAnimFrame(ctx, assets, state) {
+      const size = assets.size;
+      ctx.clearRect(0, 0, size, size);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      const n = assets.pieces.length;
+      for (let i = 0; i < n; i++) {
+        const pose = state.poses[i];
+        if (!pose) continue;
+        drawPiece(ctx, assets.pieces[i], pose, size, assets.family, state.highlight === i);
+      }
+      if (state.finalAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = state.finalAlpha;
+        const s = state.finalScale || 1;
+        ctx.translate(size / 2, size / 2);
+        ctx.scale(s, s);
+        ctx.translate(-size / 2, -size / 2);
+        ctx.fillStyle = '#111';
+        ctx.font = size + 'px "' + assets.family + '"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(assets.char, size / 2, size / 2);
+        ctx.restore();
+      }
+    }
+
+    function buildAnimTimeline(assets) {
+      const n = assets.pieces.length;
+      const size = assets.size;
+      const events = [];
+      let t = 0;
+      if (!n) {
+        events.push({ t0: 0, t1: 400, kind: 'final', from: 0, to: 1 });
+        return { duration: 900, events: events };
+      }
+      for (let i = 0; i < n; i++) {
+        const intro = introPose(i, n, size);
+        intro.alpha = 0;
+        const shown = Object.assign({}, intro, { alpha: 1 });
+        const fin = finalPose(assets.pieces[i].transform, size);
+        events.push({ t0: t, t1: t + 280, kind: 'piece', index: i, from: intro, to: shown });
+        t += 280;
+        events.push({ t0: t, t1: t + 720, kind: 'piece', index: i, from: shown, to: fin });
+        t += 720;
+        events.push({ t0: t, t1: t + 120, kind: 'hold' });
+        t += 120;
+      }
+      events.push({ t0: t, t1: t + 500, kind: 'toFinal' });
+      t += 500;
+      events.push({ t0: t, t1: t + 700, kind: 'holdFinal' });
+      t += 700;
+      return { duration: t, events: events };
+    }
+
+    function sampleAnimState(assets, timeline, timeMs) {
+      const n = assets.pieces.length;
+      const poses = [];
+      for (let i = 0; i < n; i++) {
+        const p = introPose(i, n, assets.size);
+        p.alpha = 0;
+        poses.push(p);
+      }
+      let highlight = -1;
+      let finalAlpha = 0;
+      let finalScale = 1;
+      let status = '';
+      let phase = 'init';
+      for (const ev of timeline.events) {
+        if (timeMs < ev.t0) break;
+        const u = ev.t1 === ev.t0 ? 1 : Math.max(0, Math.min(1, (timeMs - ev.t0) / (ev.t1 - ev.t0)));
+        const e = easeOutCubic(u);
+        const active = timeMs < ev.t1;
+        if (ev.kind === 'piece') {
+          poses[ev.index] = active ? mixPose(ev.from, ev.to, e) : Object.assign({}, ev.to);
+          if (active) {
+            highlight = ev.index;
+            status = '放入「' + assets.pieces[ev.index].name + '」（' + (ev.index + 1) + '/' + n + '）';
+            phase = 'piece';
+          }
+        } else if (ev.kind === 'toFinal') {
+          for (let i = 0; i < n; i++) {
+            const base = finalPose(assets.pieces[i].transform, assets.size);
+            poses[i] = Object.assign({}, base, { alpha: 1 - 0.78 * (active ? e : 1) });
+          }
+          finalAlpha = active ? e : 1;
+          finalScale = active ? lerp(0.86, 1, e) : 1;
+          highlight = -1;
+          status = '合成整字';
+          phase = 'toFinal';
+        } else if (ev.kind === 'holdFinal' || ev.kind === 'final') {
+          for (let i = 0; i < n; i++) {
+            poses[i] = Object.assign({}, finalPose(assets.pieces[i].transform, assets.size), { alpha: 0 });
+          }
+          finalAlpha = 1;
+          finalScale = 1;
+          highlight = -1;
+          status = '完成';
+          phase = 'done';
+        }
+      }
+      if (timeMs >= timeline.duration) {
+        status = '完成';
+        phase = 'done';
+      }
+      return {
+        poses: poses,
+        highlight: highlight,
+        finalAlpha: finalAlpha,
+        finalScale: finalScale,
+        status: status,
+        phase: phase,
+      };
+    }
+
+    async function playComposeAnim() {
+      if (animBusy) return;
       const ch = readAnimChar();
       const size = readAnimSize();
+      animSizeInput.value = String(size);
+      animMeta.textContent = '';
+      animStatus.textContent = '';
+      if (!ch) {
+        animStatus.textContent = '请先输入一个单字';
+        animCharInput.focus();
+        return;
+      }
+      const token = ++animToken;
+      setAnimBusy(true);
+      try {
+        await waitAnimDataReady();
+        await ensureFont(currentFontKey);
+        const assets = await buildAnimAssets(ch, size);
+        if (!assets.pieces.length) {
+          animMeta.textContent = ch + ' · 暂无构形数据，直接显示整字';
+        } else {
+          animMeta.textContent = ch + ' · ' + assets.structure + ' · ' + assets.pieces.map(p => p.name).join(' + ');
+        }
+        const { ctx } = ensureAnimCanvas(size);
+        const timeline = buildAnimTimeline(assets);
+        const t0 = performance.now();
+        await new Promise(resolve => {
+          function frame(now) {
+            if (token !== animToken) { resolve(); return; }
+            const t = now - t0;
+            const state = sampleAnimState(assets, timeline, t);
+            drawAnimFrame(ctx, assets, state);
+            if (state.status) animStatus.textContent = state.status;
+            if (t >= timeline.duration) {
+              animStatus.textContent = '完成';
+              resolve();
+              return;
+            }
+            requestAnimationFrame(frame);
+          }
+          requestAnimationFrame(frame);
+        });
+      } catch (e) {
+        if (token === animToken) animStatus.textContent = '动画失败';
+      } finally {
+        if (token === animToken) setAnimBusy(false);
+      }
+    }
+
+    async function loadGifenc() {
+      if (gifencMod) return gifencMod;
+      gifencMod = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm');
+      return gifencMod;
+    }
+
+    async function exportAnimGif() {
+      if (animBusy) return;
+      const ch = readAnimChar();
+      let size = readAnimSize();
       if (!ch) {
         animStatus.textContent = '请先输入一个单字再导出';
         animCharInput.focus();
         return;
       }
-      if (animData === null) {
-        animStatus.textContent = '构形数据还在加载，请稍后再导出';
-        return;
-      }
-      const payload = collectAnimExportPayload(ch);
-      const fontKey = currentFontKey;
-      const family = fontFamilyId(fontKey);
-      const fontFile = fontKey === 'silifon1' ? 'silifon1.ttf' : 'silifon.ttf';
-      const fontUrl = DEMO_ORIGIN + '/fonts/' + fontFile + '?v=' + FONT_VERSION;
-      const dataJson = JSON.stringify(payload);
-      const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SILIFON 动画 · ${ch}</title>
-<style>
-  @font-face {
-    font-family: 'SilifonExport';
-    src: url('${fontUrl}') format('truetype');
-    font-display: block;
-  }
-  :root { font-family: system-ui, -apple-system, sans-serif; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    background: #f3f4f6; color: #222; padding: 24px 16px;
-  }
-  .card {
-    width: min(920px, 100%);
-    background: #fff; border-radius: 16px;
-    padding: 28px 24px 32px;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.06);
-  }
-  h1 { font-size: 1.1rem; margin: 0 0 8px; }
-  .meta { font-size: 0.85rem; color: #666; margin: 0 0 14px; min-height: 1.2em; }
-  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-  button {
-    border: none; background: #1565c0; color: #fff;
-    border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-  }
-  button.secondary { background: #546e7a; }
-  .stage-wrap {
-    display: flex; justify-content: center;
-    padding: 28px; background: #fafafa;
-    border: 1px solid #e8e8e8; border-radius: 12px;
-  }
-  #stage {
-    position: relative;
-    width: var(--anim-size, ${size}px);
-    height: var(--anim-size, ${size}px);
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .piece {
-    position: absolute; left: 0; top: 0;
-    width: 100%; height: 100%;
-    transform-origin: 0 0;
-    opacity: 0;
-    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
-  }
-  .piece img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .piece .face {
-    font-family: 'SilifonExport', '${family}', sans-serif;
-    font-size: var(--anim-size, ${size}px);
-    line-height: 1;
-    font-feature-settings: "liga" 1, "clig" 1;
-  }
-  .piece.visible { opacity: 1; }
-  .piece.highlight { filter: drop-shadow(0 0 6px rgba(21,101,192,0.45)); }
-  #status { font-size: 0.8rem; color: #888; margin: 12px 0 0; min-height: 1.2em; }
-  .note { margin-top: 14px; font-size: 0.75rem; color: #999; }
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>SILIFON · ${ch}</h1>
-    <p class="meta" id="meta"></p>
-    <div class="row">
-      <button id="play" type="button">播放</button>
-      <button id="replay" class="secondary" type="button">重播</button>
-    </div>
-    <div class="stage-wrap"><div id="stage"></div></div>
-    <p id="status"></p>
-    <p class="note">本页为导出文件，可单独打开；字体从网页加载，首次可能稍慢。</p>
-  </div>
-<script>
-const DATA = ${dataJson};
-const SIZE = ${size};
-let token = 0;
-const stage = document.getElementById('stage');
-const meta = document.getElementById('meta');
-const status = document.getElementById('status');
-stage.style.setProperty('--anim-size', SIZE + 'px');
-
-function sleep(ms, t) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => (t !== token ? reject(new Error('x')) : resolve()), ms);
-  });
-}
-function cssT(tr, size) {
-  const tx = ((tr && tr.x) || 0) / 1000 * size;
-  const ty = ((tr && tr.y) || 0) / 1000 * size;
-  const sx = (tr && tr.scale != null) ? tr.scale : 1;
-  const sy = (tr && tr.scale_y != null) ? tr.scale_y : sx;
-  const r = (tr && tr.rotate) || 0;
-  return 'translate(' + tx + 'px,' + ty + 'px) scale(' + sx + ',' + sy + ') rotate(' + r + 'deg)';
-}
-function intro(i, n, size) {
-  const mid = (n - 1) / 2;
-  const dx = (i - mid) * Math.min(size * 0.22, 36);
-  return 'translate(' + dx + 'px,' + (-size * 0.08) + 'px) scale(0.42,0.42)';
-}
-function svgUrl(svg) {
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-}
-async function play() {
-  const t = ++token;
-  stage.innerHTML = '';
-  status.textContent = '';
-  const comps = DATA.components || [];
-  if (!comps.length) {
-    meta.textContent = DATA.char + ' · 暂无构形，直接显示';
-    const el = document.createElement('div');
-    el.className = 'piece visible';
-    el.innerHTML = '<span class="face">' + DATA.char + '</span>';
-    stage.appendChild(el);
-    status.textContent = '完成';
-    return;
-  }
-  meta.textContent = DATA.char + ' · ' + (DATA.structure || '') + ' · ' + comps.map(c => c.name).join(' + ');
-  const pieces = comps.map((comp, i) => {
-    const el = document.createElement('div');
-    el.className = 'piece';
-    el.style.transform = intro(i, comps.length, SIZE);
-    if (comp.svg) {
-      const img = document.createElement('img');
-      img.src = svgUrl(comp.svg);
-      img.alt = comp.name || '';
-      el.appendChild(img);
-    } else {
-      const face = document.createElement('span');
-      face.className = 'face';
-      face.textContent = comp.name || '·';
-      el.appendChild(face);
-    }
-    stage.appendChild(el);
-    return el;
-  });
-  try {
-    if (document.fonts && document.fonts.load) {
-      await document.fonts.load(SIZE + 'px "SilifonExport"');
-    }
-    for (let i = 0; i < pieces.length; i++) {
-      if (t !== token) return;
-      status.textContent = '放入「' + comps[i].name + '」（' + (i + 1) + '/' + pieces.length + '）';
-      pieces.forEach((p, j) => p.classList.toggle('highlight', j === i));
-      const el = pieces[i];
-      void el.offsetWidth;
-      el.classList.add('visible');
-      await sleep(280, t);
-      el.style.transform = cssT(comps[i].transform, SIZE);
-      await sleep(780, t);
-      el.classList.remove('highlight');
-    }
-    if (t !== token) return;
-    status.textContent = '合成整字';
-    pieces.forEach(p => { p.style.opacity = '0.22'; });
-    const final = document.createElement('div');
-    final.className = 'piece';
-    final.style.transform = 'scale(0.86)';
-    final.innerHTML = '<span class="face">' + DATA.char + '</span>';
-    stage.appendChild(final);
-    void final.offsetWidth;
-    final.classList.add('visible');
-    final.style.transform = 'none';
-    await sleep(650, t);
-    pieces.forEach(p => { p.style.display = 'none'; });
-    status.textContent = '完成';
-  } catch (e) {}
-}
-document.getElementById('play').onclick = play;
-document.getElementById('replay').onclick = play;
-play();
-</script>
-</body>
-</html>`;
-      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'silifon-anim-' + ch + '.html';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      animStatus.textContent = '已导出 silifon-anim-' + ch + '.html（可单独打开）';
-    }
-
-    function openAnimSolo() {
-      const ch = readAnimChar();
-      const size = readAnimSize();
-      if (!ch) {
-        animStatus.textContent = '请先输入一个单字';
-        animCharInput.focus();
-        return;
-      }
-      window.open(buildAnimSoloUrl(ch, size, currentFontKey), '_blank', 'noopener');
-    }
-
-    function cssComposeTransform(tr, size) {
-      const tx = ((tr && tr.x) || 0) / 1000 * size;
-      const ty = ((tr && tr.y) || 0) / 1000 * size;
-      const sx = (tr && tr.scale != null) ? tr.scale : 1;
-      const sy = (tr && tr.scale_y != null) ? tr.scale_y : sx;
-      const r = (tr && tr.rotate) || 0;
-      return 'translate(' + tx + 'px, ' + ty + 'px) scale(' + sx + ', ' + sy + ') rotate(' + r + 'deg)';
-    }
-
-    function introTransform(index, total, size) {
-      const spread = Math.min(size * 0.22, 36);
-      const mid = (total - 1) / 2;
-      const dx = (index - mid) * spread;
-      return 'translate(' + dx + 'px, ' + (-size * 0.08) + 'px) scale(0.42, 0.42)';
-    }
-
-    function sleep(ms, token) {
-      return new Promise((resolve, reject) => {
-        const id = setTimeout(() => {
-          if (token !== animToken) reject(new Error('cancelled'));
-          else resolve();
-        }, ms);
-        animTimer = id;
-      });
-    }
-
-    function clearAnimTimers() {
-      if (animTimer) clearTimeout(animTimer);
-      animTimer = 0;
-      animToken += 1;
-    }
-
-    function makeAnimPiece(comp, size, svg) {
-      const el = document.createElement('div');
-      el.className = 'anim-piece';
-      if (svg) {
-        const img = document.createElement('img');
-        img.src = svgDataUrl(svg);
-        img.alt = comp.name || '';
-        el.appendChild(img);
-      } else {
-        const face = document.createElement('span');
-        face.className = 'glyph-face';
-        face.textContent = comp.name || '·';
-        el.appendChild(face);
-      }
-      return el;
-    }
-
-    async function playComposeAnim() {
-      clearAnimTimers();
-      const token = animToken;
-      const ch = readAnimChar();
-      const size = readAnimSize();
-      animSizeInput.value = String(size);
-      animStage.style.setProperty('--anim-size', size + 'px');
-      animStage.innerHTML = '';
-      animMeta.textContent = '';
-      animStatus.textContent = '';
-
-      if (!ch) {
-        animStatus.textContent = '请先输入一个单字';
-        animCharInput.focus();
-        return;
-      }
-
+      // GIF 体积控制：导出边长上限 180
+      size = Math.min(size, 180);
+      const token = ++animToken;
+      setAnimBusy(true);
+      animStatus.textContent = '正在生成 GIF…';
       try {
+        await waitAnimDataReady();
         await ensureFont(currentFontKey);
-      } catch (e) {}
-
-      const info = animData && animData[ch];
-      if (!info || !(info.components || []).length) {
-        animMeta.textContent = ch + ' · 暂无构形数据，直接显示整字';
-        const final = document.createElement('div');
-        final.className = 'anim-piece final visible';
-        final.style.transform = 'none';
-        const face = document.createElement('span');
-        face.className = 'glyph-face';
-        face.textContent = ch;
-        final.appendChild(face);
-        animStage.appendChild(final);
-        animStatus.textContent = '完成';
-        return;
-      }
-
-      const comps = info.components;
-      const structComp = compData && compData[ch];
-      const svgList = (structComp && structComp.components) || [];
-      const names = comps.map(c => c.name).join(' + ');
-      animMeta.textContent = ch + ' · ' + (info.structure || '') + ' · ' + names;
-
-      const pieces = comps.map((comp, i) => {
-        const byIndex = svgList[i];
-        const byName = svgList.find(s => s && s.name === comp.name);
-        const svg = (byIndex && byIndex.svg) || (byName && byName.svg) || null;
-        const el = makeAnimPiece(comp, size, svg);
-        el.style.transform = introTransform(i, comps.length, size);
-        animStage.appendChild(el);
-        return el;
-      });
-
-      try {
-        for (let i = 0; i < pieces.length; i++) {
-          if (token !== animToken) return;
-          animStatus.textContent = '放入「' + comps[i].name + '」（' + (i + 1) + '/' + pieces.length + '）';
-          pieces.forEach((p, j) => p.classList.toggle('highlight', j === i));
-          const el = pieces[i];
-          // force reflow then reveal at intro
-          void el.offsetWidth;
-          el.classList.add('visible');
-          await sleep(280, token);
-          el.style.transform = cssComposeTransform(comps[i].transform, size);
-          await sleep(780, token);
-          el.classList.remove('highlight');
+        const assets = await buildAnimAssets(ch, size);
+        if (!assets.pieces.length) {
+          animMeta.textContent = ch + ' · 暂无构形数据，直接显示整字';
+        } else {
+          animMeta.textContent = ch + ' · ' + assets.structure + ' · ' + assets.pieces.map(p => p.name).join(' + ');
         }
-
-        if (token !== animToken) return;
-        animStatus.textContent = '合成整字';
-        pieces.forEach(p => { p.style.opacity = '0.22'; });
-        const final = document.createElement('div');
-        final.className = 'anim-piece final';
-        final.style.transform = 'scale(0.86)';
-        const face = document.createElement('span');
-        face.className = 'glyph-face';
-        face.textContent = ch;
-        final.appendChild(face);
-        animStage.appendChild(final);
-        void final.offsetWidth;
-        final.classList.add('visible');
-        final.style.transform = 'none';
-        await sleep(650, token);
-        pieces.forEach(p => { p.style.display = 'none'; });
-        animStatus.textContent = '完成';
+        const timeline = buildAnimTimeline(assets);
+        const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        // 同时在舞台预览
+        const view = ensureAnimCanvas(readAnimSize());
+        const fps = 12;
+        const frameDelay = Math.round(1000 / fps);
+        const gif = GIFEncoder();
+        let written = 0;
+        for (let t = 0; t <= timeline.duration; t += frameDelay) {
+          if (token !== animToken) return;
+          const state = sampleAnimState(assets, timeline, t);
+          drawAnimFrame(ctx, assets, state);
+          // preview scaled
+          view.ctx.clearRect(0, 0, readAnimSize(), readAnimSize());
+          view.ctx.drawImage(canvas, 0, 0, readAnimSize(), readAnimSize());
+          const data = ctx.getImageData(0, 0, size, size).data;
+          const palette = quantize(data, 256);
+          const index = applyPalette(data, palette);
+          gif.writeFrame(index, size, size, { palette: palette, delay: frameDelay });
+          written += 1;
+          if (written % 4 === 0) {
+            animStatus.textContent = '正在生成 GIF… ' + Math.min(100, Math.round(t / timeline.duration * 100)) + '%';
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+        gif.finish();
+        const bytes = gif.bytes();
+        const blob = new Blob([bytes], { type: 'image/gif' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'silifon-anim-' + ch + '.gif';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        animStatus.textContent = '已导出 silifon-anim-' + ch + '.gif';
       } catch (e) {
-        if (e && e.message === 'cancelled') return;
-        animStatus.textContent = '动画中断';
+        console.error(e);
+        animStatus.textContent = '导出 GIF 失败（请检查网络以加载编码器）';
+      } finally {
+        if (token === animToken) setAnimBusy(false);
       }
     }
 
     animPlayBtn.addEventListener('click', () => { playComposeAnim(); });
     animReplayBtn.addEventListener('click', () => { playComposeAnim(); });
-    animSoloBtn.addEventListener('click', openAnimSolo);
-    animExportBtn.addEventListener('click', () => {
-      waitAnimDataReady().then(() => exportAnimHtml());
-    });
+    animExportBtn.addEventListener('click', () => { exportAnimGif(); });
     animCharInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') playComposeAnim();
     });
@@ -1195,56 +1131,13 @@ play();
     ensureFont('silifon').then(() => { applyDisplayStyle(); render(); }).catch(() => {});
 
     const q = new URLSearchParams(location.search);
-    const init = q.get('text') || '';
-    const animView = (q.get('view') || '') === 'anim';
-    const initChar = q.get('char') || q.get('anim') || '';
-    const initSize = q.get('size');
-    const initFont = q.get('font');
-    const autoplay = q.get('autoplay') !== '0';
-
-    if (initFont && (initFont in FONT_FILES)) {
-      setFontFile(initFont).catch(() => {});
-    }
+    const init = q.get('text') || q.get('char') || '';
     if (init) {
       textInput.value = init;
       const wait = setInterval(() => {
         if (compData !== null) { clearInterval(wait); render(); }
       }, 50);
       setTimeout(() => clearInterval(wait), 5000);
-    } else if (!animView && initChar) {
-      textInput.value = initChar;
-      const wait = setInterval(() => {
-        if (compData !== null) { clearInterval(wait); render(); }
-      }, 50);
-      setTimeout(() => clearInterval(wait), 5000);
-    }
-    if (initChar) {
-      animCharInput.value = chars(initChar)[0] || initChar;
-    }
-    if (initSize) {
-      const n = parseInt(initSize, 10);
-      if (Number.isFinite(n)) animSizeInput.value = String(Math.min(280, Math.max(48, n)));
-    }
-    if (animView) {
-      document.body.classList.add('anim-solo');
-      document.title = 'SILIFON 动画' + (readAnimChar() ? ' · ' + readAnimChar() : '');
-      if (animSoloTitle) {
-        animSoloTitle.textContent = readAnimChar()
-          ? ('单独显示 · ' + readAnimChar())
-          : '单独显示';
-      }
-      const back = document.getElementById('animBackFull');
-      if (back) {
-        const u = new URL(location.href);
-        u.search = '';
-        u.hash = '';
-        back.href = u.toString();
-      }
-    }
-    if (animView || (initChar && autoplay)) {
-      waitAnimDataReady().then(() => {
-        if (autoplay && readAnimChar()) playComposeAnim();
-      });
     }
   </script>
 </body>
