@@ -276,6 +276,40 @@
     .anim-piece.highlight {
       filter: drop-shadow(0 0 6px rgba(21, 101, 192, 0.45));
     }
+    #animExport, #animSolo {
+      border: none; background: #546e7a; color: #fff;
+      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
+    }
+    #animExport:hover, #animSolo:hover { background: #455a64; }
+    #animExport { background: #2e7d32; }
+    #animExport:hover { background: #1b5e20; }
+    .solo-bar { display: none; margin-bottom: 16px; }
+    .solo-bar a {
+      color: #1565c0; text-decoration: none; font-size: 0.9rem;
+    }
+    .solo-bar a:hover { text-decoration: underline; }
+    body.anim-solo {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px 16px;
+      background: #f3f4f6;
+    }
+    body.anim-solo .wrap {
+      max-width: 920px; width: 100%;
+      background: #fff; border-radius: 16px;
+      padding: 28px 24px 32px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.06);
+    }
+    body.anim-solo .wrap > :not(.anim-mod) { display: none !important; }
+    body.anim-solo .anim-mod {
+      margin: 0; padding: 0; border: none;
+    }
+    body.anim-solo .solo-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    body.anim-solo .anim-stage-wrap {
+      padding: 28px; background: #fafafa;
+    }
+    body.anim-solo #animStage {
+      border-style: solid; border-color: #e0e0e0;
+    }
   </style>
 </head>
 <body>
@@ -304,8 +338,12 @@
     </p>
 
     <section class="anim-mod" aria-labelledby="animTitle">
+      <div class="solo-bar">
+        <a id="animBackFull" href="./">← 返回完整页</a>
+        <span id="animSoloTitle" style="font-size:0.9rem;color:#666;"></span>
+      </div>
       <h2 id="animTitle">单字动画</h2>
-      <p class="lead">输入一个单字，按字元构形逐步复合展示（默认字号 96）。</p>
+      <p class="lead">输入一个单字，按字元构形逐步复合展示（默认字号 96）。可单独显示或导出为独立 HTML。</p>
       <div class="anim-row">
         <div class="opt">
           <label for="animChar">单字</label>
@@ -317,6 +355,8 @@
         </div>
         <button id="animPlay" type="button">播放</button>
         <button id="animReplay" type="button">重播</button>
+        <button id="animSolo" type="button">单独显示</button>
+        <button id="animExport" type="button">导出 HTML</button>
       </div>
       <div id="animMeta"></div>
       <div class="anim-stage-wrap">
@@ -650,11 +690,15 @@
     const animSizeInput = document.getElementById('animSize');
     const animPlayBtn = document.getElementById('animPlay');
     const animReplayBtn = document.getElementById('animReplay');
+    const animSoloBtn = document.getElementById('animSolo');
+    const animExportBtn = document.getElementById('animExport');
     const animStage = document.getElementById('animStage');
     const animMeta = document.getElementById('animMeta');
     const animStatus = document.getElementById('animStatus');
+    const animSoloTitle = document.getElementById('animSoloTitle');
     let animTimer = 0;
     let animToken = 0;
+    const DEMO_ORIGIN = 'https://xjq284.github.io/silifon-demo';
 
     function readAnimSize() {
       const n = parseInt(animSizeInput.value, 10);
@@ -665,6 +709,279 @@
     function readAnimChar() {
       const list = chars(animCharInput.value);
       return list.length ? list[0] : '';
+    }
+
+    function buildAnimSoloUrl(ch, size, fontKey) {
+      const u = new URL(location.href);
+      u.search = '';
+      u.hash = '';
+      u.searchParams.set('view', 'anim');
+      u.searchParams.set('char', ch);
+      u.searchParams.set('size', String(size));
+      u.searchParams.set('font', fontKey || currentFontKey);
+      u.searchParams.set('autoplay', '1');
+      return u.toString();
+    }
+
+    function waitAnimDataReady() {
+      return new Promise(resolve => {
+        if (animData !== null && compData !== null) {
+          resolve();
+          return;
+        }
+        const t0 = Date.now();
+        const id = setInterval(() => {
+          if ((animData !== null && compData !== null) || Date.now() - t0 > 8000) {
+            clearInterval(id);
+            resolve();
+          }
+        }, 40);
+      });
+    }
+
+    function collectAnimExportPayload(ch) {
+      const info = (animData && animData[ch]) || null;
+      const struct = (compData && compData[ch]) || null;
+      const comps = (info && info.components) || [];
+      const svgList = (struct && struct.components) || [];
+      const components = comps.map((comp, i) => {
+        const byIndex = svgList[i];
+        const byName = svgList.find(s => s && s.name === comp.name);
+        const svg = (byIndex && byIndex.svg) || (byName && byName.svg) || null;
+        return {
+          name: comp.name,
+          kind: comp.kind,
+          transform: comp.transform,
+          svg: svg || null,
+        };
+      });
+      return {
+        char: ch,
+        structure: (info && info.structure) || '',
+        components: components,
+      };
+    }
+
+    function exportAnimHtml() {
+      const ch = readAnimChar();
+      const size = readAnimSize();
+      if (!ch) {
+        animStatus.textContent = '请先输入一个单字再导出';
+        animCharInput.focus();
+        return;
+      }
+      if (animData === null) {
+        animStatus.textContent = '构形数据还在加载，请稍后再导出';
+        return;
+      }
+      const payload = collectAnimExportPayload(ch);
+      const fontKey = currentFontKey;
+      const family = fontFamilyId(fontKey);
+      const fontFile = fontKey === 'silifon1' ? 'silifon1.ttf' : 'silifon.ttf';
+      const fontUrl = DEMO_ORIGIN + '/fonts/' + fontFile + '?v=' + FONT_VERSION;
+      const dataJson = JSON.stringify(payload);
+      const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SILIFON 动画 · ${ch}</title>
+<style>
+  @font-face {
+    font-family: 'SilifonExport';
+    src: url('${fontUrl}') format('truetype');
+    font-display: block;
+  }
+  :root { font-family: system-ui, -apple-system, sans-serif; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: #f3f4f6; color: #222; padding: 24px 16px;
+  }
+  .card {
+    width: min(920px, 100%);
+    background: #fff; border-radius: 16px;
+    padding: 28px 24px 32px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.06);
+  }
+  h1 { font-size: 1.1rem; margin: 0 0 8px; }
+  .meta { font-size: 0.85rem; color: #666; margin: 0 0 14px; min-height: 1.2em; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  button {
+    border: none; background: #1565c0; color: #fff;
+    border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
+  }
+  button.secondary { background: #546e7a; }
+  .stage-wrap {
+    display: flex; justify-content: center;
+    padding: 28px; background: #fafafa;
+    border: 1px solid #e8e8e8; border-radius: 12px;
+  }
+  #stage {
+    position: relative;
+    width: var(--anim-size, ${size}px);
+    height: var(--anim-size, ${size}px);
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .piece {
+    position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%;
+    transform-origin: 0 0;
+    opacity: 0;
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .piece img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .piece .face {
+    font-family: 'SilifonExport', '${family}', sans-serif;
+    font-size: var(--anim-size, ${size}px);
+    line-height: 1;
+    font-feature-settings: "liga" 1, "clig" 1;
+  }
+  .piece.visible { opacity: 1; }
+  .piece.highlight { filter: drop-shadow(0 0 6px rgba(21,101,192,0.45)); }
+  #status { font-size: 0.8rem; color: #888; margin: 12px 0 0; min-height: 1.2em; }
+  .note { margin-top: 14px; font-size: 0.75rem; color: #999; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>SILIFON · ${ch}</h1>
+    <p class="meta" id="meta"></p>
+    <div class="row">
+      <button id="play" type="button">播放</button>
+      <button id="replay" class="secondary" type="button">重播</button>
+    </div>
+    <div class="stage-wrap"><div id="stage"></div></div>
+    <p id="status"></p>
+    <p class="note">本页为导出文件，可单独打开；字体从网页加载，首次可能稍慢。</p>
+  </div>
+<script>
+const DATA = ${dataJson};
+const SIZE = ${size};
+let token = 0;
+const stage = document.getElementById('stage');
+const meta = document.getElementById('meta');
+const status = document.getElementById('status');
+stage.style.setProperty('--anim-size', SIZE + 'px');
+
+function sleep(ms, t) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => (t !== token ? reject(new Error('x')) : resolve()), ms);
+  });
+}
+function cssT(tr, size) {
+  const tx = ((tr && tr.x) || 0) / 1000 * size;
+  const ty = ((tr && tr.y) || 0) / 1000 * size;
+  const sx = (tr && tr.scale != null) ? tr.scale : 1;
+  const sy = (tr && tr.scale_y != null) ? tr.scale_y : sx;
+  const r = (tr && tr.rotate) || 0;
+  return 'translate(' + tx + 'px,' + ty + 'px) scale(' + sx + ',' + sy + ') rotate(' + r + 'deg)';
+}
+function intro(i, n, size) {
+  const mid = (n - 1) / 2;
+  const dx = (i - mid) * Math.min(size * 0.22, 36);
+  return 'translate(' + dx + 'px,' + (-size * 0.08) + 'px) scale(0.42,0.42)';
+}
+function svgUrl(svg) {
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+async function play() {
+  const t = ++token;
+  stage.innerHTML = '';
+  status.textContent = '';
+  const comps = DATA.components || [];
+  if (!comps.length) {
+    meta.textContent = DATA.char + ' · 暂无构形，直接显示';
+    const el = document.createElement('div');
+    el.className = 'piece visible';
+    el.innerHTML = '<span class="face">' + DATA.char + '</span>';
+    stage.appendChild(el);
+    status.textContent = '完成';
+    return;
+  }
+  meta.textContent = DATA.char + ' · ' + (DATA.structure || '') + ' · ' + comps.map(c => c.name).join(' + ');
+  const pieces = comps.map((comp, i) => {
+    const el = document.createElement('div');
+    el.className = 'piece';
+    el.style.transform = intro(i, comps.length, SIZE);
+    if (comp.svg) {
+      const img = document.createElement('img');
+      img.src = svgUrl(comp.svg);
+      img.alt = comp.name || '';
+      el.appendChild(img);
+    } else {
+      const face = document.createElement('span');
+      face.className = 'face';
+      face.textContent = comp.name || '·';
+      el.appendChild(face);
+    }
+    stage.appendChild(el);
+    return el;
+  });
+  try {
+    if (document.fonts && document.fonts.load) {
+      await document.fonts.load(SIZE + 'px "SilifonExport"');
+    }
+    for (let i = 0; i < pieces.length; i++) {
+      if (t !== token) return;
+      status.textContent = '放入「' + comps[i].name + '」（' + (i + 1) + '/' + pieces.length + '）';
+      pieces.forEach((p, j) => p.classList.toggle('highlight', j === i));
+      const el = pieces[i];
+      void el.offsetWidth;
+      el.classList.add('visible');
+      await sleep(280, t);
+      el.style.transform = cssT(comps[i].transform, SIZE);
+      await sleep(780, t);
+      el.classList.remove('highlight');
+    }
+    if (t !== token) return;
+    status.textContent = '合成整字';
+    pieces.forEach(p => { p.style.opacity = '0.22'; });
+    const final = document.createElement('div');
+    final.className = 'piece';
+    final.style.transform = 'scale(0.86)';
+    final.innerHTML = '<span class="face">' + DATA.char + '</span>';
+    stage.appendChild(final);
+    void final.offsetWidth;
+    final.classList.add('visible');
+    final.style.transform = 'none';
+    await sleep(650, t);
+    pieces.forEach(p => { p.style.display = 'none'; });
+    status.textContent = '完成';
+  } catch (e) {}
+}
+document.getElementById('play').onclick = play;
+document.getElementById('replay').onclick = play;
+play();
+</script>
+</body>
+</html>`;
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'silifon-anim-' + ch + '.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      animStatus.textContent = '已导出 silifon-anim-' + ch + '.html（可单独打开）';
+    }
+
+    function openAnimSolo() {
+      const ch = readAnimChar();
+      const size = readAnimSize();
+      if (!ch) {
+        animStatus.textContent = '请先输入一个单字';
+        animCharInput.focus();
+        return;
+      }
+      window.open(buildAnimSoloUrl(ch, size, currentFontKey), '_blank', 'noopener');
     }
 
     function cssComposeTransform(tr, size) {
@@ -808,6 +1125,10 @@
 
     animPlayBtn.addEventListener('click', () => { playComposeAnim(); });
     animReplayBtn.addEventListener('click', () => { playComposeAnim(); });
+    animSoloBtn.addEventListener('click', openAnimSolo);
+    animExportBtn.addEventListener('click', () => {
+      waitAnimDataReady().then(() => exportAnimHtml());
+    });
     animCharInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') playComposeAnim();
     });
@@ -874,13 +1195,56 @@
     ensureFont('silifon').then(() => { applyDisplayStyle(); render(); }).catch(() => {});
 
     const q = new URLSearchParams(location.search);
-    const init = q.get('text') || q.get('char') || '';
+    const init = q.get('text') || '';
+    const animView = (q.get('view') || '') === 'anim';
+    const initChar = q.get('char') || q.get('anim') || '';
+    const initSize = q.get('size');
+    const initFont = q.get('font');
+    const autoplay = q.get('autoplay') !== '0';
+
+    if (initFont && (initFont in FONT_FILES)) {
+      setFontFile(initFont).catch(() => {});
+    }
     if (init) {
       textInput.value = init;
       const wait = setInterval(() => {
         if (compData !== null) { clearInterval(wait); render(); }
       }, 50);
       setTimeout(() => clearInterval(wait), 5000);
+    } else if (!animView && initChar) {
+      textInput.value = initChar;
+      const wait = setInterval(() => {
+        if (compData !== null) { clearInterval(wait); render(); }
+      }, 50);
+      setTimeout(() => clearInterval(wait), 5000);
+    }
+    if (initChar) {
+      animCharInput.value = chars(initChar)[0] || initChar;
+    }
+    if (initSize) {
+      const n = parseInt(initSize, 10);
+      if (Number.isFinite(n)) animSizeInput.value = String(Math.min(280, Math.max(48, n)));
+    }
+    if (animView) {
+      document.body.classList.add('anim-solo');
+      document.title = 'SILIFON 动画' + (readAnimChar() ? ' · ' + readAnimChar() : '');
+      if (animSoloTitle) {
+        animSoloTitle.textContent = readAnimChar()
+          ? ('单独显示 · ' + readAnimChar())
+          : '单独显示';
+      }
+      const back = document.getElementById('animBackFull');
+      if (back) {
+        const u = new URL(location.href);
+        u.search = '';
+        u.hash = '';
+        back.href = u.toString();
+      }
+    }
+    if (animView || (initChar && autoplay)) {
+      waitAnimDataReady().then(() => {
+        if (autoplay && readAnimChar()) playComposeAnim();
+      });
     }
   </script>
 </body>
