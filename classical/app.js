@@ -14,6 +14,7 @@
     kai: "var(--kai)",
     silifon: "var(--silifon)",
     silifon1: "var(--silifon1)",
+    seal: "var(--seal)",
   };
 
   const panel = document.getElementById("panel");

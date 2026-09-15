@@ -10,6 +10,7 @@
   --sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
   --silifon: "Silifon", var(--serif);
   --silifon1: "Silifon1", var(--serif);
+  --seal: "SealScript", "FZXZTFW", var(--serif);
   --kai: "Kaiti SC", "STKaiti", "KaiTi", var(--serif);
 }
 
@@ -21,6 +22,16 @@
 @font-face {
   font-family: "Silifon1";
   src: url("../fonts/silifon1.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "SealScript";
+  src: url("../fonts/FZXZTFW.TTF") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "FZXZTFW";
+  src: url("../fonts/FZXZTFW.TTF") format("truetype");
   font-display: swap;
 }
 
