@@ -24,6 +24,26 @@
     }
     .wrap { max-width: 720px; margin: 0 auto; }
     h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 600; }
+    .site-nav {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin: -4px 0 18px;
+    }
+    .site-nav a {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      background: #fff;
+      color: #333;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .site-nav a:hover { border-color: #90caf9; background: #f5f9ff; }
+    .site-nav a.current {
+      border-color: #1565c0;
+      color: #1565c0;
+      background: #e3f2fd;
+    }
 
     .opts {
       display: flex; flex-wrap: wrap; gap: 16px 24px;
@@ -294,6 +314,10 @@
 <body>
   <div class="wrap">
     <h1>SILIFON</h1>
+    <nav class="site-nav" aria-label="站点导航">
+      <a class="current" href="./">字形演示</a>
+      <a href="./classical/">古文学习</a>
+    </nav>
     <div class="opts">
       <div class="opt">
         <label for="fontSize">字体大小</label>

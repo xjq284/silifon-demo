@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Classical · 古文学习 · SILIFON</title>
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="home-link" href="../">← SILIFON</a>
+        <div class="brand">Classical</div>
+      </div>
+      <nav class="crumb" id="crumb"></nav>
+    </header>
+
+    <div class="searchbar">
+      <input id="searchInput" type="search" placeholder="查找：清庙、道德经17章…" autocomplete="off" />
+      <button type="button" id="searchBtn">查找</button>
+    </div>
+
+    <div class="modes" id="modes">
+      <button type="button" data-mode="browse" class="active">目录</button>
+      <button type="button" data-mode="read" disabled>文章阅读</button>
+      <button type="button" data-mode="line" disabled>逐句学习</button>
+      <button type="button" data-mode="char" disabled>逐字学习</button>
+    </div>
+
+    <div class="fontbar" id="fontbar">
+      <button type="button" data-font="kai" class="active">楷体</button>
+      <button type="button" data-font="silifon">硅体</button>
+      <button type="button" data-font="silifon1">硅体1</button>
+    </div>
+
+    <main class="panel" id="panel"></main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
