@@ -140,6 +140,9 @@
     } else if (s.includes("千字文")) {
       workHint = "qian_zi_wen";
       s = s.replaceAll("千字文", "");
+    } else if (s.includes("百家姓")) {
+      workHint = "bai_jia_xing";
+      s = s.replaceAll("百家姓", "");
     }
 
     let chapterNum = null;
@@ -373,7 +376,7 @@
     panel.innerHTML = `
       <h2 class="read-title">选择作品</h2>
       <div class="list" id="workList"></div>
-      <p class="hint">《道德经》《诗经》《三字经》《千字文》· 硅体字形由 SILIFON 字体提供。</p>
+      <p class="hint">《道德经》《诗经》《三字经》《千字文》《百家姓》· 硅体字形由 SILIFON 字体提供。</p>
     `;
     const box = panel.querySelector("#workList");
     works.forEach((w) => {
