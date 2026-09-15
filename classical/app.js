@@ -134,6 +134,9 @@
     } else if (s.includes("诗经") || s.includes("毛诗")) {
       workHint = "shi_jing";
       s = s.replaceAll("诗经", "").replaceAll("毛诗", "");
+    } else if (s.includes("三字经") || s.includes("三字經")) {
+      workHint = "san_zi_jing";
+      s = s.replaceAll("三字经", "").replaceAll("三字經", "");
     }
 
     let chapterNum = null;
@@ -154,6 +157,21 @@
   function searchNodes(q, limit = 20) {
     const parsed = parseSearchQuery(q);
     if (!parsed.raw) return [];
+    if (parsed.workHint && !parsed.text && parsed.chapterNum == null) {
+      const roots = Object.values(corpus.nodesById)
+        .filter((n) => n.work_id === parsed.workHint && !n.parent_id)
+        .sort((a, b) => a.sort - b.sort || a.id.localeCompare(b.id));
+      return roots.slice(0, limit).map((node) => {
+        const work = workById(node.work_id);
+        const ancestors = nodeAncestors(node.id).map((a) => ({
+          id: a.id, title: a.title, type: a.type,
+        }));
+        const pathParts = [];
+        if (work) pathParts.push(work.title);
+        pathParts.push(...ancestors.map((a) => a.title), node.title);
+        return { score: 850, node, work, ancestors, path_label: pathParts.join(" / ") };
+      });
+    }
     const scored = [];
     for (const node of Object.values(corpus.nodesById)) {
       if (parsed.workHint && node.work_id !== parsed.workHint) continue;
@@ -352,7 +370,7 @@
     panel.innerHTML = `
       <h2 class="read-title">选择作品</h2>
       <div class="list" id="workList"></div>
-      <p class="hint">《道德经》《诗经》· 硅体字形由 SILIFON 字体提供。</p>
+      <p class="hint">《道德经》《诗经》《三字经》· 硅体字形由 SILIFON 字体提供。</p>
     `;
     const box = panel.querySelector("#workList");
     works.forEach((w) => {
