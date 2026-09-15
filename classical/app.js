@@ -7,6 +7,7 @@
     lines: [],
     lineId: null,
     charIndex: -1,
+    interpIndex: 0,
     font: "kai",
   };
 
@@ -249,6 +250,23 @@
       if (!node) throw new Error("node not found");
       const children = (node.child_ids || []).map((id) => nodeById(id)).filter(Boolean);
       return { node, children, lines: linesUnderNode(nodeId) };
+    }
+
+    m = pathname.match(/^\/api\/lines\/(.+)$/);
+    if (m) {
+      const lineId = decodeURIComponent(m[1]);
+      let line = null;
+      for (const arr of Object.values(corpus.linesByParent || {})) {
+        line = arr.find((l) => l.id === lineId) || null;
+        if (line) break;
+      }
+      if (!line) throw new Error("line not found");
+      const interpretations =
+        line.interpretations ||
+        (corpus.interpretationsByLine || {})[lineId] ||
+        [];
+      const detail = { ...line, interpretations };
+      return { line: detail, interpretations, prev: null, next: null };
     }
 
     if (pathname === "/api/search") {
@@ -528,6 +546,7 @@
         stopRecite();
         state.lineId = line.id;
         state.charIndex = 0;
+        state.interpIndex = 0;
         setMode("line");
         renderLine();
       });
@@ -646,7 +665,8 @@
         b.style.cssText =
           "border:none;background:transparent;font:inherit;font-family:inherit;padding:0 0.02em;cursor:pointer;";
         b.addEventListener("click", () => {
-          const chars = hanChars(content);
+          const base = currentLine()?.content || content;
+          const chars = hanChars(base);
           state.charIndex = Math.max(0, chars.indexOf(ch));
           stopRecite();
           setMode("char");
@@ -659,7 +679,7 @@
     });
   }
 
-  function renderLine() {
+  async function renderLine() {
     applyFont();
     const line = currentLine();
     if (!line) {
@@ -668,6 +688,22 @@
     }
     const idx = state.lines.findIndex((l) => l.id === line.id);
     const showKaiCompare = state.font !== "kai";
+
+    let interpretations = line.interpretations || [];
+    try {
+      const detail = await api(`/api/lines/${encodeURIComponent(line.id)}`);
+      if (detail.line) {
+        Object.assign(line, detail.line);
+        interpretations = detail.interpretations || detail.line.interpretations || [];
+        line.interpretations = interpretations;
+      }
+    } catch (_) {
+      /* 无解说时仍可阅读原文 */
+    }
+    if (state.interpIndex >= interpretations.length) state.interpIndex = 0;
+    const interp = interpretations[state.interpIndex] || null;
+    const displayText = interp?.segmentation || line.content;
+
     panel.innerHTML = `
       <div class="line-view">
         <div class="text" id="lineText"></div>
@@ -683,18 +719,21 @@
         <div class="recite-row">
           <button type="button" id="reciteBtn" class="recite-btn">朗诵</button>
         </div>
+        <div class="study" id="lineStudy"></div>
         <div class="navrow">
           <button type="button" id="prevLine" ${idx <= 0 ? "disabled" : ""}>上一句</button>
           <div class="progress">${idx + 1} / ${state.lines.length}</div>
           <button type="button" id="nextLine" ${idx >= state.lines.length - 1 ? "disabled" : ""}>下一句</button>
         </div>
-        <p class="hint">点句中汉字，或切换到「逐字学习」。</p>
+        <p class="hint">点句中汉字进入「逐字学习」。有多种断句时可切换对照。</p>
       </div>
     `;
-    fillLineText(panel.querySelector("#lineText"), line.content, true);
+    fillLineText(panel.querySelector("#lineText"), displayText, true);
     if (showKaiCompare) {
-      fillLineText(panel.querySelector("#lineKai"), line.content, false);
+      fillLineText(panel.querySelector("#lineKai"), displayText, false);
     }
+    renderLineStudy(panel.querySelector("#lineStudy"), interpretations);
+
     const reciteBtn = panel.querySelector("#reciteBtn");
     const setReciteIdle = () => {
       reciteBtn.textContent = "朗诵";
@@ -711,13 +750,14 @@
         return;
       }
       setRecitePlaying();
-      reciteText(line.content, setReciteIdle);
+      reciteText(displayText, setReciteIdle);
     });
     panel.querySelector("#prevLine").addEventListener("click", () => {
       if (idx > 0) {
         stopRecite();
         state.lineId = state.lines[idx - 1].id;
         state.charIndex = 0;
+        state.interpIndex = 0;
         renderLine();
       }
     });
@@ -726,8 +766,66 @@
         stopRecite();
         state.lineId = state.lines[idx + 1].id;
         state.charIndex = 0;
+        state.interpIndex = 0;
         renderLine();
       }
+    });
+  }
+
+  function renderLineStudy(box, interpretations) {
+    if (!box) return;
+    if (!interpretations.length) {
+      box.innerHTML = `<p class="study-empty">暂无断句解说。</p>`;
+      return;
+    }
+    const tabs = interpretations
+      .map((it, i) => {
+        const label = interpretations.length > 1 ? `断句 ${i + 1}` : "断句";
+        return `<button type="button" class="interp-tab${i === state.interpIndex ? " active" : ""}" data-interp="${i}">${escapeHtml(label)}</button>`;
+      })
+      .join("");
+    const interp = interpretations[state.interpIndex];
+    const termsHtml = (interp.terms || [])
+      .map(
+        (t) => `
+      <div class="term">
+        <div class="term-text">${escapeHtml(t.text)}</div>
+        <div class="term-body">
+          <div class="term-expl">${escapeHtml(t.explanation || "")}</div>
+          ${t.note ? `<div class="term-note">${escapeHtml(t.note)}</div>` : ""}
+        </div>
+      </div>`,
+      )
+      .join("");
+    box.innerHTML = `
+      <div class="interp-tabs">${tabs}</div>
+      <div class="segmentation">
+        <div class="label">断句</div>
+        <div class="seg-text">${escapeHtml(interp.segmentation || "")}</div>
+      </div>
+      ${
+        termsHtml
+          ? `<div class="terms">
+              <div class="label">词解</div>
+              ${termsHtml}
+            </div>`
+          : ""
+      }
+      ${
+        interp.explanation
+          ? `<div class="sent-expl">
+              <div class="label">句解</div>
+              <p>${escapeHtml(interp.explanation)}</p>
+              ${interp.note ? `<p class="term-note">${escapeHtml(interp.note)}</p>` : ""}
+            </div>`
+          : ""
+      }
+    `;
+    box.querySelectorAll("[data-interp]").forEach((b) => {
+      b.addEventListener("click", () => {
+        state.interpIndex = Number(b.dataset.interp);
+        renderLine();
+      });
     });
   }
 

@@ -281,6 +281,81 @@ body {
   border-color: var(--accent);
   color: #fff;
 }
+.study {
+  margin: 1rem 0 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+.study-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+.interp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+.interp-tab {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+.interp-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.segmentation .label,
+.terms .label,
+.sent-expl .label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.35rem;
+}
+.seg-text {
+  font-family: var(--kai);
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  margin-bottom: 0.9rem;
+}
+.terms { margin-bottom: 0.9rem; }
+.term {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.45rem 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.term:last-child { border-bottom: none; }
+.term-text {
+  font-family: var(--kai);
+  font-size: 1.15rem;
+  color: var(--accent);
+}
+.term-expl {
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.term-note {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.sent-expl p {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
 .navrow {
   display: flex;
   justify-content: space-between;
