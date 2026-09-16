@@ -593,9 +593,23 @@
     if (window.speechSynthesis) speechSynthesis.cancel();
   }
 
-  function pickZhVoice() {
+  function pickVoice(lang) {
     if (!window.speechSynthesis) return null;
     const voices = speechSynthesis.getVoices();
+    if (/^en/i.test(lang)) {
+      return (
+        voices.find((v) => /^en(-|$)/i.test(v.lang) && /US|GB|UK|EN/i.test(v.lang)) ||
+        voices.find((v) => /^en/i.test(v.lang)) ||
+        null
+      );
+    }
+    if (/^(sa|hi)/i.test(lang)) {
+      return (
+        voices.find((v) => /^sa/i.test(v.lang)) ||
+        voices.find((v) => /^hi/i.test(v.lang)) ||
+        null
+      );
+    }
     return (
       voices.find((v) => /^zh(-|$)/i.test(v.lang) && /CN|China|中文|普通话|国语/i.test(v.name + v.lang)) ||
       voices.find((v) => /^zh/i.test(v.lang)) ||
@@ -603,24 +617,28 @@
     );
   }
 
-  function makeUtterance(text) {
+  function pickZhVoice() {
+    return pickVoice("zh-CN");
+  }
+
+  function makeUtterance(text, lang = "zh-CN") {
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "zh-CN";
-    u.rate = 0.82;
+    u.lang = lang;
+    u.rate = /^en/i.test(lang) ? 0.95 : /^(sa|hi)/i.test(lang) ? 0.9 : 0.82;
     u.pitch = 1;
-    const voice = pickZhVoice();
+    const voice = pickVoice(lang);
     if (voice) u.voice = voice;
     return u;
   }
 
-  function reciteText(text, onEnd) {
+  function reciteText(text, onEnd, lang = "zh-CN") {
     if (!window.speechSynthesis) {
       alert("当前浏览器不支持朗诵。");
       return null;
     }
     const gen = ++reciteGen;
     speechSynthesis.cancel();
-    const u = makeUtterance(text);
+    const u = makeUtterance(text, lang);
     const done = () => {
       if (gen === reciteGen) onEnd?.();
     };
@@ -703,7 +721,7 @@
     if (state.interpIndex >= interpretations.length) state.interpIndex = 0;
     const interp = interpretations[state.interpIndex] || null;
     const displayText = interp?.segmentation || line.content;
-    const reciteLang = isEnglishInterp(interp) ? "en-US" : "zh-CN";
+    const reciteLang = interpReciteLang(interp);
 
     panel.innerHTML = `
       <div class="line-view">
@@ -773,21 +791,37 @@
     });
   }
 
-  function interpTabLabel(it, index, list) {
-    const note = it.note || "";
-    if (note === "英文翻译" || note.startsWith("英文")) return "英文";
-    const zhIdx = list
-      .map((x, i) => ({ x, i }))
-      .filter(({ x }) => !((x.note || "").startsWith("英文")))
-      .findIndex(({ i }) => i === index);
-    const zhTotal = list.filter((x) => !((x.note || "").startsWith("英文"))).length;
-    if (zhTotal <= 1 && zhIdx === 0) return "断句";
-    if (zhIdx >= 0) return `断句 ${zhIdx + 1}`;
-    return `断句 ${index + 1}`;
+  function isForeignInterp(it) {
+    const note = (it && it.note) || "";
+    return note.startsWith("英文") || note.startsWith("梵文");
   }
 
   function isEnglishInterp(it) {
     return ((it && it.note) || "").startsWith("英文");
+  }
+
+  function isSanskritInterp(it) {
+    return ((it && it.note) || "").startsWith("梵文");
+  }
+
+  function interpReciteLang(it) {
+    if (isEnglishInterp(it)) return "en-US";
+    if (isSanskritInterp(it)) return "hi-IN";
+    return "zh-CN";
+  }
+
+  function interpTabLabel(it, index, list) {
+    const note = it.note || "";
+    if (note === "英文翻译" || note.startsWith("英文")) return "英文";
+    if (note === "梵文翻译" || note.startsWith("梵文")) return "梵文";
+    const zhIdx = list
+      .map((x, i) => ({ x, i }))
+      .filter(({ x }) => !isForeignInterp(x))
+      .findIndex(({ i }) => i === index);
+    const zhTotal = list.filter((x) => !isForeignInterp(x)).length;
+    if (zhTotal <= 1 && zhIdx === 0) return "断句";
+    if (zhIdx >= 0) return `断句 ${zhIdx + 1}`;
+    return `断句 ${index + 1}`;
   }
 
   function renderLineStudy(box, interpretations) {
@@ -804,6 +838,10 @@
       .join("");
     const interp = interpretations[state.interpIndex];
     const en = isEnglishInterp(interp);
+    const sa = isSanskritInterp(interp);
+    const foreign = en || sa;
+    const segClass = en ? " seg-en" : sa ? " seg-sa" : "";
+    const segLabel = en ? "英文" : sa ? "梵文" : "断句";
     const termsHtml = (interp.terms || [])
       .map(
         (t) => `
@@ -819,11 +857,11 @@
     box.innerHTML = `
       <div class="interp-tabs">${tabs}</div>
       <div class="segmentation">
-        <div class="label">${en ? "英文" : "断句"}</div>
-        <div class="seg-text${en ? " seg-en" : ""}">${escapeHtml(interp.segmentation || "")}</div>
+        <div class="label">${segLabel}</div>
+        <div class="seg-text${segClass}">${escapeHtml(interp.segmentation || "")}</div>
       </div>
       ${
-        !en && termsHtml
+        !foreign && termsHtml
           ? `<div class="terms">
               <div class="label">词解</div>
               ${termsHtml}
@@ -831,7 +869,7 @@
           : ""
       }
       ${
-        !en && interp.explanation
+        !foreign && interp.explanation
           ? `<div class="sent-expl">
               <div class="label">句解</div>
               <p>${escapeHtml(interp.explanation)}</p>
@@ -842,7 +880,9 @@
       ${
         en
           ? `<p class="term-note">英文为按句意译，便于对照阅读。</p>`
-          : ""
+          : sa
+            ? `<p class="term-note">梵文为天城体意译，便于对照阅读。</p>`
+            : ""
       }
     `;
     box.querySelectorAll("[data-interp]").forEach((b) => {
