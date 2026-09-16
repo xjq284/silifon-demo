@@ -703,6 +703,7 @@
     if (state.interpIndex >= interpretations.length) state.interpIndex = 0;
     const interp = interpretations[state.interpIndex] || null;
     const displayText = interp?.segmentation || line.content;
+    const reciteLang = isEnglishInterp(interp) ? "en-US" : "zh-CN";
 
     panel.innerHTML = `
       <div class="line-view">
@@ -750,7 +751,7 @@
         return;
       }
       setRecitePlaying();
-      reciteText(displayText, setReciteIdle);
+      reciteText(displayText, setReciteIdle, reciteLang);
     });
     panel.querySelector("#prevLine").addEventListener("click", () => {
       if (idx > 0) {
@@ -772,6 +773,23 @@
     });
   }
 
+  function interpTabLabel(it, index, list) {
+    const note = it.note || "";
+    if (note === "英文翻译" || note.startsWith("英文")) return "英文";
+    const zhIdx = list
+      .map((x, i) => ({ x, i }))
+      .filter(({ x }) => !((x.note || "").startsWith("英文")))
+      .findIndex(({ i }) => i === index);
+    const zhTotal = list.filter((x) => !((x.note || "").startsWith("英文"))).length;
+    if (zhTotal <= 1 && zhIdx === 0) return "断句";
+    if (zhIdx >= 0) return `断句 ${zhIdx + 1}`;
+    return `断句 ${index + 1}`;
+  }
+
+  function isEnglishInterp(it) {
+    return ((it && it.note) || "").startsWith("英文");
+  }
+
   function renderLineStudy(box, interpretations) {
     if (!box) return;
     if (!interpretations.length) {
@@ -780,11 +798,12 @@
     }
     const tabs = interpretations
       .map((it, i) => {
-        const label = interpretations.length > 1 ? `断句 ${i + 1}` : "断句";
+        const label = interpTabLabel(it, i, interpretations);
         return `<button type="button" class="interp-tab${i === state.interpIndex ? " active" : ""}" data-interp="${i}">${escapeHtml(label)}</button>`;
       })
       .join("");
     const interp = interpretations[state.interpIndex];
+    const en = isEnglishInterp(interp);
     const termsHtml = (interp.terms || [])
       .map(
         (t) => `
@@ -800,11 +819,11 @@
     box.innerHTML = `
       <div class="interp-tabs">${tabs}</div>
       <div class="segmentation">
-        <div class="label">断句</div>
-        <div class="seg-text">${escapeHtml(interp.segmentation || "")}</div>
+        <div class="label">${en ? "英文" : "断句"}</div>
+        <div class="seg-text${en ? " seg-en" : ""}">${escapeHtml(interp.segmentation || "")}</div>
       </div>
       ${
-        termsHtml
+        !en && termsHtml
           ? `<div class="terms">
               <div class="label">词解</div>
               ${termsHtml}
@@ -812,12 +831,17 @@
           : ""
       }
       ${
-        interp.explanation
+        !en && interp.explanation
           ? `<div class="sent-expl">
               <div class="label">句解</div>
               <p>${escapeHtml(interp.explanation)}</p>
               ${interp.note ? `<p class="term-note">${escapeHtml(interp.note)}</p>` : ""}
             </div>`
+          : ""
+      }
+      ${
+        en
+          ? `<p class="term-note">英文为按句意译，便于对照阅读。</p>`
           : ""
       }
     `;

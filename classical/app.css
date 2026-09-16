@@ -29,11 +29,6 @@
   src: url("../fonts/FZXZTFW.TTF") format("truetype");
   font-display: swap;
 }
-@font-face {
-  font-family: "FZXZTFW";
-  src: url("../fonts/FZXZTFW.TTF") format("truetype");
-  font-display: swap;
-}
 
 * { box-sizing: border-box; }
 html, body {
@@ -281,6 +276,7 @@ body {
   border-color: var(--accent);
   color: #fff;
 }
+
 .study {
   margin: 1rem 0 0.5rem;
   padding-top: 0.85rem;
@@ -325,6 +321,12 @@ body {
   letter-spacing: 0.06em;
   line-height: 1.5;
   margin-bottom: 0.9rem;
+}
+.seg-text.seg-en {
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  line-height: 1.55;
 }
 .terms { margin-bottom: 0.9rem; }
 .term {
