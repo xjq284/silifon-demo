@@ -9,6 +9,8 @@
     charIndex: -1,
     interpIndex: 0,
     font: "kai",
+    treeExpanded: new Set(),
+    treeChildren: new Map(), // work:id | node:id -> children[]
   };
 
   const FONT_CSS = {
@@ -23,11 +25,38 @@
   const modes = document.getElementById("modes");
   const fontbar = document.getElementById("fontbar");
 
+  function applyFont() {
+    document.documentElement.style.setProperty(
+      "--active-font",
+      FONT_CSS[state.font] || FONT_CSS.kai,
+    );
+    fontbar.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.font === state.font);
+    });
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    modes.querySelectorAll("button").forEach((b) => {
+      const m = b.dataset.mode;
+      b.classList.toggle("active", m === mode);
+      if (m === "browse") b.disabled = false;
+      if (m === "read") b.disabled = !state.chapter;
+      if (m === "line" || m === "char") b.disabled = !state.lineId && !state.lines.length;
+    });
+  }
+
+  function hanChars(text) {
+    return Array.from(text || "").filter((ch) => /\p{Script=Han}/u.test(ch));
+  }
+
+
+  const CORPUS_VERSION = "921d8b825e9b";
   let corpus = null;
 
   async function loadCorpus() {
     if (corpus) return corpus;
-    const r = await fetch("./data/corpus.json", { cache: "default" });
+    const r = await fetch(`./data/corpus.json?v=${CORPUS_VERSION}`, { cache: "no-store" });
     if (!r.ok) throw new Error("课文数据加载失败");
     corpus = await r.json();
     return corpus;
@@ -144,6 +173,9 @@
     } else if (s.includes("百家姓")) {
       workHint = "bai_jia_xing";
       s = s.replaceAll("百家姓", "");
+    } else if (s.includes("我的mv") || s.includes("汉字之歌")) {
+      workHint = "我的mv";
+      s = s.replaceAll("我的mv", "").replaceAll("汉字之歌", "");
     }
 
     let chapterNum = null;
@@ -220,14 +252,23 @@
     });
   }
 
-  async function api(path) {
+  function pickExtras(obj) {
+    if (!obj) return {};
+    return { video: obj.video || null, remark: obj.remark || null };
+  }
+
+  async function api(path, options = {}) {
+    const method = String((options && options.method) || "GET").toUpperCase();
+    if (method !== "GET") {
+      throw new Error("静态站只读，请在本地 classical 维护");
+    }
     await loadCorpus();
     const [pathname, query = ""] = path.split("?");
     const params = new URLSearchParams(query);
 
     if (pathname === "/api/works") {
-      return corpus.works.map(({ id, title, sort, meta_json }) => ({
-        id, title, sort, meta_json,
+      return corpus.works.map(({ id, title, sort, meta_json, video, remark }) => ({
+        id, title, sort, meta_json, video, remark,
       }));
     }
 
@@ -238,7 +279,13 @@
       if (!work) throw new Error("work not found");
       const children = (work.root_ids || []).map((id) => nodeById(id)).filter(Boolean);
       return {
-        work: { id: work.id, title: work.title, sort: work.sort, meta_json: work.meta_json },
+        work: {
+          id: work.id,
+          title: work.title,
+          sort: work.sort,
+          meta_json: work.meta_json,
+          ...pickExtras(work),
+        },
         children,
       };
     }
@@ -277,29 +324,80 @@
     throw new Error(`unknown api: ${pathname}`);
   }
 
-  function applyFont() {
-    document.documentElement.style.setProperty(
-      "--active-font",
-      FONT_CSS[state.font] || FONT_CSS.kai,
-    );
-    fontbar.querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("active", b.dataset.font === state.font);
+  function askPassword(actionLabel) {
+    const pw = window.prompt(`删除「${actionLabel}」需输入管理密码：`);
+    return pw == null ? null : pw;
+  }
+
+  async function adminDelete(path, label) {
+    const password = askPassword(label);
+    if (password == null) return false;
+    await api(path, { method: "DELETE", body: { password } });
+    return true;
+  }
+
+  async function saveExtra(entityType, entityId, { video, remark }) {
+    return api(`/api/extra/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`, {
+      method: "PUT",
+      body: {
+        video: (video || "").trim() || null,
+        remark: (remark || "").trim() || null,
+      },
     });
   }
 
-  function setMode(mode) {
-    state.mode = mode;
-    modes.querySelectorAll("button").forEach((b) => {
-      const m = b.dataset.mode;
-      b.classList.toggle("active", m === mode);
-      if (m === "browse") b.disabled = false;
-      if (m === "read") b.disabled = !state.chapter;
-      if (m === "line" || m === "char") b.disabled = !state.lineId && !state.lines.length;
-    });
+  function extraDisplayHtml(obj, { label = "引用" } = {}) {
+    if (!obj) return "";
+    const video = (obj.video || "").trim();
+    const remark = (obj.remark || "").trim();
+    if (!video && !remark) return "";
+    const videoLinks = video
+      ? video
+          .split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map(
+            (url, i) =>
+              `<p class="extra-video"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}视频${video.split(/\r?\n/).filter((s) => s.trim()).length > 1 ? i + 1 : ""}</a></p>`,
+          )
+          .join("")
+      : "";
+    return `
+      <div class="extra-display">
+        ${videoLinks}
+        ${remark ? `<p class="extra-remark">${escapeHtml(remark)}</p>` : ""}
+      </div>`;
   }
 
-  function hanChars(text) {
-    return Array.from(text || "").filter((ch) => /\p{Script=Han}/u.test(ch));
+  function extraEditorHtml(entityType, entityId, obj = {}, { compact = false } = {}) {
+    return `
+      <form class="extra-form${compact ? " compact" : ""}" data-extra-type="${escapeHtml(entityType)}" data-extra-id="${escapeHtml(entityId)}">
+        <label class="full">视频链接（每行一条）
+          <textarea name="video" rows="${compact ? 2 : 3}" placeholder="https://...">${escapeHtml(obj.video || "")}</textarea>
+        </label>
+        <label class="full">备注
+          <input name="remark" value="${escapeHtml(obj.remark || "")}" placeholder="可选备注" />
+        </label>
+        <button type="submit">保存挂接</button>
+      </form>`;
+  }
+
+  function bindExtraForms(root, onSaved) {
+    root.querySelectorAll("form.extra-form").forEach((form) => {
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const fd = new FormData(form);
+        try {
+          const saved = await saveExtra(form.dataset.extraType, form.dataset.extraId, {
+            video: String(fd.get("video") || ""),
+            remark: String(fd.get("remark") || ""),
+          });
+          onSaved?.(saved, form);
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+    });
   }
 
   function renderCrumb() {
@@ -320,6 +418,7 @@
     crumb.querySelectorAll("button").forEach((b) => {
       b.addEventListener("click", () => {
         stopRecite();
+        const stayMaintain = state.mode === "maintain";
         if (b.dataset.go === "works") {
           state.work = null;
           state.path = [];
@@ -327,16 +426,22 @@
           state.lines = [];
           state.lineId = null;
           state.charIndex = -1;
-          setMode("browse");
-          showWorks();
+          if (stayMaintain) renderMaintain();
+          else {
+            setMode("browse");
+            showWorks();
+          }
         } else if (b.dataset.go === "work") {
           state.path = [];
           state.chapter = null;
           state.lines = [];
           state.lineId = null;
           state.charIndex = -1;
-          setMode("browse");
-          showWork(state.work.id);
+          if (stayMaintain) renderMaintain();
+          else {
+            setMode("browse");
+            showWork(state.work.id);
+          }
         } else if (b.dataset.go === "path") {
           const idx = Number(b.dataset.idx);
           const node = state.path[idx];
@@ -345,8 +450,13 @@
           state.lines = [];
           state.lineId = null;
           state.charIndex = -1;
-          setMode("browse");
-          openNode(node.id);
+          if (stayMaintain) {
+            state.path = [...state.path, { id: node.id, title: node.title, type: node.type }];
+            renderMaintain();
+          } else {
+            setMode("browse");
+            openNode(node.id);
+          }
         }
       });
     });
@@ -372,38 +482,207 @@
     );
   }
 
-  function renderNodeList(title, nodes, { emptyHint } = {}) {
+  function treeKey(kind, id) {
+    return `${kind}:${id}`;
+  }
+
+  async function ensureTreeChildren(kind, id) {
+    const key = treeKey(kind, id);
+    if (state.treeChildren.has(key)) return state.treeChildren.get(key);
+    let kids = [];
+    if (kind === "work") {
+      const data = await api(`/api/works/${encodeURIComponent(id)}`);
+      kids = data.children || [];
+    } else {
+      const data = await api(`/api/nodes/${encodeURIComponent(id)}`);
+      kids = data.children || [];
+    }
+    state.treeChildren.set(key, kids);
+    return kids;
+  }
+
+  function isExpandableNode(node, children) {
+    return (children?.length || 0) > 0 && node.type !== "poem";
+  }
+
+  async function showBrowseTree() {
+    renderCrumb();
+    setMode("browse");
+    const works = await api("/api/works");
+    // 若当前在某作品路径上，自动展开该路径
+    if (state.work?.id) {
+      state.treeExpanded.add(treeKey("work", state.work.id));
+      await ensureTreeChildren("work", state.work.id);
+      for (const n of state.path) {
+        state.treeExpanded.add(treeKey("node", n.id));
+        await ensureTreeChildren("node", n.id);
+      }
+    }
     panel.innerHTML = `
-      <h2 class="read-title">${escapeHtml(title)}</h2>
-      <div class="list" id="nodeList"></div>
-      ${emptyHint ? `<p class="hint">${escapeHtml(emptyHint)}</p>` : ""}
+      <h2 class="read-title">选择作品</h2>
+      <div class="tree" id="browseTree"></div>
+      <p class="hint">点 ▸ 展开目录，点标题进入阅读。</p>
     `;
-    const box = panel.querySelector("#nodeList");
-    nodes.forEach((n) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.innerHTML = `<strong>${escapeHtml(n.title || n.id)}</strong><span class="meta">${escapeHtml(typeLabel(n.type))}</span>`;
-      btn.addEventListener("click", () => openNode(n.id));
-      box.appendChild(btn);
+    const root = panel.querySelector("#browseTree");
+    works.forEach((w) => root.appendChild(buildWorkTreeItem(w)));
+  }
+
+  function buildWorkTreeItem(work) {
+    const key = treeKey("work", work.id);
+    const expanded = state.treeExpanded.has(key);
+    const wrap = document.createElement("div");
+    wrap.className = "tree-branch";
+    const row = document.createElement("div");
+    row.className = `tree-row depth-0${state.work?.id === work.id ? " current" : ""}`;
+    row.innerHTML = `
+      <button type="button" class="tree-toggle" aria-label="展开">${expanded ? "▾" : "▸"}</button>
+      <button type="button" class="tree-label">
+        <strong>${escapeHtml(work.title)}</strong>
+        <span class="meta">${escapeHtml(work.id)}</span>
+      </button>
+    `;
+    const kidsBox = document.createElement("div");
+    kidsBox.className = "tree-children";
+    kidsBox.hidden = !expanded;
+
+    row.querySelector(".tree-toggle").addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      await toggleTreeExpand("work", work.id, kidsBox, row.querySelector(".tree-toggle"), () =>
+        renderWorkChildren(work.id, kidsBox),
+      );
     });
+    row.querySelector(".tree-label").addEventListener("click", async () => {
+      state.work = work;
+      state.path = [];
+      state.chapter = null;
+      state.lines = [];
+      state.lineId = null;
+      if (!state.treeExpanded.has(key)) {
+        await toggleTreeExpand("work", work.id, kidsBox, row.querySelector(".tree-toggle"), () =>
+          renderWorkChildren(work.id, kidsBox),
+        );
+      } else {
+        renderCrumb();
+      }
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(kidsBox);
+    if (expanded) {
+      renderWorkChildren(work.id, kidsBox).catch((e) => {
+        kidsBox.innerHTML = `<p class="hint">${escapeHtml(e.message || e)}</p>`;
+      });
+    }
+    return wrap;
+  }
+
+  async function renderWorkChildren(workId, box) {
+    const kids = await ensureTreeChildren("work", workId);
+    box.innerHTML = "";
+    if (!kids.length) {
+      box.innerHTML = `<p class="hint tree-empty">暂无章节</p>`;
+      return;
+    }
+    kids.forEach((n) => box.appendChild(buildNodeTreeItem(n, 1, [])));
+  }
+
+  function buildNodeTreeItem(node, depth, ancestors) {
+    const key = treeKey("node", node.id);
+    const expanded = state.treeExpanded.has(key);
+    const cached = state.treeChildren.get(key);
+    const maybeExpandable = node.type !== "poem";
+    const wrap = document.createElement("div");
+    wrap.className = "tree-branch";
+    const row = document.createElement("div");
+    row.className = `tree-row depth-${Math.min(depth, 6)}${state.chapter?.id === node.id ? " current" : ""}`;
+    row.innerHTML = `
+      <button type="button" class="tree-toggle" aria-label="展开">${
+        maybeExpandable ? (expanded ? "▾" : "▸") : "·"
+      }</button>
+      <button type="button" class="tree-label">
+        <strong>${escapeHtml(node.title || node.id)}</strong>
+        <span class="meta">${escapeHtml(typeLabel(node.type))}</span>
+      </button>
+    `;
+    const kidsBox = document.createElement("div");
+    kidsBox.className = "tree-children";
+    kidsBox.hidden = !expanded;
+
+    const toggleBtn = row.querySelector(".tree-toggle");
+    if (maybeExpandable) {
+      toggleBtn.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        await toggleTreeExpand("node", node.id, kidsBox, toggleBtn, () =>
+          renderNodeChildren(node, depth, ancestors, kidsBox),
+        );
+      });
+    } else {
+      toggleBtn.disabled = true;
+      toggleBtn.classList.add("leaf");
+    }
+
+    row.querySelector(".tree-label").addEventListener("click", async () => {
+      // 先探一下是否可展开目录
+      const kids = await ensureTreeChildren("node", node.id);
+      if (isExpandableNode(node, kids)) {
+        state.work = state.work || { id: node.work_id };
+        if (!state.treeExpanded.has(key)) {
+          await toggleTreeExpand("node", node.id, kidsBox, toggleBtn, () =>
+            renderNodeChildren(node, depth, ancestors, kidsBox),
+          );
+        }
+        state.path = [...ancestors, { id: node.id, title: node.title, type: node.type }];
+        renderCrumb();
+        return;
+      }
+      // 叶子：进入阅读
+      state.path = [...ancestors];
+      await openNode(node.id);
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(kidsBox);
+    if (expanded) {
+      renderNodeChildren(node, depth, ancestors, kidsBox).catch((e) => {
+        kidsBox.innerHTML = `<p class="hint">${escapeHtml(e.message || e)}</p>`;
+      });
+    }
+    return wrap;
+  }
+
+  async function renderNodeChildren(node, depth, ancestors, box) {
+    const kids = await ensureTreeChildren("node", node.id);
+    box.innerHTML = "";
+    if (!kids.length) {
+      box.innerHTML = `<p class="hint tree-empty">无子目录（点标题可读正文）</p>`;
+      return;
+    }
+    const nextAncestors = [...ancestors, { id: node.id, title: node.title, type: node.type }];
+    kids.forEach((n) => box.appendChild(buildNodeTreeItem(n, depth + 1, nextAncestors)));
+  }
+
+  async function toggleTreeExpand(kind, id, kidsBox, toggleBtn, renderKids) {
+    const key = treeKey(kind, id);
+    if (state.treeExpanded.has(key)) {
+      state.treeExpanded.delete(key);
+      kidsBox.hidden = true;
+      kidsBox.innerHTML = "";
+      if (toggleBtn) toggleBtn.textContent = "▸";
+      return;
+    }
+    state.treeExpanded.add(key);
+    kidsBox.hidden = false;
+    if (toggleBtn) toggleBtn.textContent = "▾";
+    kidsBox.innerHTML = `<p class="hint tree-empty">加载中…</p>`;
+    try {
+      await renderKids();
+    } catch (e) {
+      kidsBox.innerHTML = `<p class="hint">${escapeHtml(e.message || e)}</p>`;
+    }
   }
 
   async function showWorks() {
-    renderCrumb();
-    const works = await api("/api/works");
-    panel.innerHTML = `
-      <h2 class="read-title">选择作品</h2>
-      <div class="list" id="workList"></div>
-      <p class="hint">《道德经》《诗经》《三字经》《千字文》《百家姓》· 硅体字形由 SILIFON 字体提供。</p>
-    `;
-    const box = panel.querySelector("#workList");
-    works.forEach((w) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.innerHTML = `<strong>${escapeHtml(w.title)}</strong><span class="meta">${escapeHtml(w.id)}</span>`;
-      btn.addEventListener("click", () => showWork(w.id));
-      box.appendChild(btn);
-    });
+    await showBrowseTree();
   }
 
   async function showWork(workId) {
@@ -413,9 +692,279 @@
     state.chapter = null;
     state.lines = [];
     state.lineId = null;
+    state.treeExpanded.add(treeKey("work", workId));
+    state.treeChildren.set(treeKey("work", workId), data.children || []);
+    await showBrowseTree();
+  }
+
+  async function renderMaintain() {
+    stopRecite();
     renderCrumb();
-    setMode("browse");
-    renderNodeList(data.work.title, data.children);
+    setMode("maintain");
+    try {
+      if (!state.work) {
+        await renderMaintainWorks();
+        return;
+      }
+      const parentId = state.path.length ? state.path[state.path.length - 1].id : null;
+      const data = parentId
+        ? await api(`/api/nodes/${encodeURIComponent(parentId)}`)
+        : await api(`/api/works/${encodeURIComponent(state.work.id)}`);
+      const children = data.children || [];
+      const lines = data.lines || [];
+      const title = parentId ? data.node.title : data.work.title;
+      // 若当前节点是叶子（有句子或无子节点且已进入阅读态），优先维护句子
+      if (parentId && (!children.length || lines.some((l) => l.parent_id === parentId))) {
+        const direct = lines.filter((l) => l.parent_id === parentId);
+        if (direct.length || !children.length) {
+          await renderMaintainLines(data.node, direct.length ? direct : lines);
+          return;
+        }
+      }
+      await renderMaintainNodes(title, children, parentId);
+    } catch (e) {
+      panel.innerHTML = `<p class="hint">维护加载失败：${escapeHtml(e.message || e)}</p>`;
+    }
+  }
+
+  async function renderMaintainWorks() {
+    const works = await api("/api/works");
+    panel.innerHTML = `
+      <h2 class="read-title">维护 · 作品</h2>
+      <p class="hint">任意对象可统一挂接「视频链接 / 备注」。删除需管理密码。</p>
+      <form class="maintain-form" id="addWorkForm">
+        <label>作品名 <input name="title" required placeholder="如：论语" /></label>
+        <label>ID（可选） <input name="id" placeholder="lun_yu" /></label>
+        <button type="submit">增加作品</button>
+      </form>
+      <div class="list maintain-list" id="workList"></div>
+    `;
+    const box = panel.querySelector("#workList");
+    works.forEach((w) => {
+      const row = document.createElement("div");
+      row.className = "maintain-row maintain-node";
+      row.innerHTML = `
+        <div class="maintain-node-main">
+          <button type="button" class="maintain-open">
+            <strong>${escapeHtml(w.title)}</strong>
+            <span class="meta">${escapeHtml(w.id)}${w.video || w.remark ? " · 有挂接" : ""}</span>
+          </button>
+          ${extraEditorHtml("work", w.id, w, { compact: true })}
+        </div>
+        <button type="button" class="danger" data-del>删除</button>
+      `;
+      row.querySelector(".maintain-open").addEventListener("click", async () => {
+        state.work = w;
+        state.path = [];
+        state.chapter = null;
+        state.lines = [];
+        await renderMaintain();
+      });
+      row.querySelector("[data-del]").addEventListener("click", async () => {
+        try {
+          if (!(await adminDelete(`/api/admin/works/${encodeURIComponent(w.id)}`, w.title))) return;
+          if (state.work?.id === w.id) {
+            state.work = null;
+            state.path = [];
+          }
+          await renderMaintain();
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+      box.appendChild(row);
+    });
+    bindExtraForms(box, () => renderMaintain());
+    panel.querySelector("#addWorkForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.target);
+      try {
+        await api("/api/admin/works", {
+          method: "POST",
+          body: {
+            title: String(fd.get("title") || "").trim(),
+            id: String(fd.get("id") || "").trim() || null,
+          },
+        });
+        await renderMaintain();
+      } catch (e) {
+        alert(e.message || e);
+      }
+    });
+  }
+
+  async function renderMaintainNodes(title, children, parentId) {
+    panel.innerHTML = `
+      <h2 class="read-title">维护 · ${escapeHtml(title)}</h2>
+      <form class="maintain-form" id="addNodeForm">
+        <label>章节名 <input name="title" required placeholder="如：学而篇 / 第一章" /></label>
+        <label>类型
+          <select name="type">
+            <option value="chapter">章</option>
+            <option value="book">部</option>
+            <option value="part">类</option>
+            <option value="section">什/国</option>
+            <option value="poem">篇</option>
+          </select>
+        </label>
+        <label class="full">视频链接（可选） <input name="video" type="url" placeholder="https://..." /></label>
+        <label class="full">备注（可选） <input name="remark" placeholder="可选备注" /></label>
+        <label>ID（可选） <input name="id" placeholder="自动生成" /></label>
+        <button type="submit">增加章节</button>
+      </form>
+      <div class="list maintain-list" id="nodeList"></div>
+      ${!children.length ? `<p class="hint">尚无子章节。也可进入空章后直接加句子。</p>` : ""}
+    `;
+    const box = panel.querySelector("#nodeList");
+    children.forEach((n) => {
+      const row = document.createElement("div");
+      row.className = "maintain-row maintain-node";
+      row.innerHTML = `
+        <div class="maintain-node-main">
+          <button type="button" class="maintain-open">
+            <strong>${escapeHtml(n.title || n.id)}</strong>
+            <span class="meta">${escapeHtml(typeLabel(n.type))}${n.video || n.remark ? " · 有挂接" : ""}</span>
+          </button>
+          ${extraEditorHtml("node", n.id, n, { compact: true })}
+        </div>
+        <button type="button" class="danger" data-del>删除</button>
+      `;
+      row.querySelector(".maintain-open").addEventListener("click", async () => {
+        state.path = [...state.path, { id: n.id, title: n.title, type: n.type }];
+        await renderMaintain();
+      });
+      row.querySelector("[data-del]").addEventListener("click", async () => {
+        try {
+          if (!(await adminDelete(`/api/admin/nodes/${encodeURIComponent(n.id)}`, n.title || n.id)))
+            return;
+          await renderMaintain();
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+      box.appendChild(row);
+    });
+    bindExtraForms(box, () => renderMaintain());
+    if (parentId) {
+      const jump = document.createElement("p");
+      jump.className = "hint";
+      jump.innerHTML = `<button type="button" class="linkish" id="editLinesHere">在此节点编辑句子</button>`;
+      panel.appendChild(jump);
+      panel.querySelector("#editLinesHere").addEventListener("click", async () => {
+        const data = await api(`/api/nodes/${encodeURIComponent(parentId)}`);
+        const direct = (data.lines || []).filter((l) => l.parent_id === parentId);
+        await renderMaintainLines(data.node, direct);
+      });
+    }
+    panel.querySelector("#addNodeForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.target);
+      try {
+        await api("/api/admin/nodes", {
+          method: "POST",
+          body: {
+            work_id: state.work.id,
+            parent_id: parentId,
+            title: String(fd.get("title") || "").trim(),
+            type: String(fd.get("type") || "chapter"),
+            id: String(fd.get("id") || "").trim() || null,
+            video: String(fd.get("video") || "").trim() || null,
+            remark: String(fd.get("remark") || "").trim() || null,
+          },
+        });
+        await renderMaintain();
+      } catch (e) {
+        alert(e.message || e);
+      }
+    });
+  }
+
+  async function renderMaintainLines(node, lines) {
+    state.chapter = node;
+    panel.innerHTML = `
+      <h2 class="read-title">维护句子 · ${escapeHtml(node.title)}</h2>
+      <div class="maintain-form">
+        <div class="label">本章挂接</div>
+        ${extraEditorHtml("node", node.id, node)}
+      </div>
+      <form class="maintain-form" id="addLineForm">
+        <label class="full">句子 <input name="content" required placeholder="输入一句原文" /></label>
+        <label class="full">拼音（可选） <input name="pinyin" placeholder="可选" /></label>
+        <button type="submit">增加句子</button>
+      </form>
+      <div class="list maintain-list" id="lineList"></div>
+      ${!lines.length ? `<p class="hint">尚无句子。</p>` : ""}
+    `;
+    bindExtraForms(panel.querySelector(".maintain-form"), async (saved) => {
+      Object.assign(node, { video: saved.video, remark: saved.remark });
+      state.chapter = node;
+    });
+    const box = panel.querySelector("#lineList");
+    lines.forEach((line) => {
+      const row = document.createElement("div");
+      row.className = "maintain-row maintain-line";
+      row.innerHTML = `
+        <div class="maintain-line-body">
+          <input class="line-edit" value="${escapeHtml(line.content)}" />
+          <span class="meta">${escapeHtml(line.id)}</span>
+          ${extraEditorHtml("line", line.id, line, { compact: true })}
+        </div>
+        <button type="button" data-save>保存</button>
+        <button type="button" class="danger" data-del>删除</button>
+      `;
+      row.querySelector("[data-save]").addEventListener("click", async () => {
+        const content = row.querySelector(".line-edit").value.trim();
+        try {
+          await api(`/api/admin/lines/${encodeURIComponent(line.id)}`, {
+            method: "PATCH",
+            body: { content },
+          });
+          const data = await api(`/api/nodes/${encodeURIComponent(node.id)}`);
+          await renderMaintainLines(
+            data.node,
+            (data.lines || []).filter((l) => l.parent_id === node.id),
+          );
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+      row.querySelector("[data-del]").addEventListener("click", async () => {
+        try {
+          if (!(await adminDelete(`/api/admin/lines/${encodeURIComponent(line.id)}`, line.content.slice(0, 16))))
+            return;
+          const data = await api(`/api/nodes/${encodeURIComponent(node.id)}`);
+          await renderMaintainLines(
+            data.node,
+            (data.lines || []).filter((l) => l.parent_id === node.id),
+          );
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+      box.appendChild(row);
+    });
+    bindExtraForms(box);
+    panel.querySelector("#addLineForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.target);
+      try {
+        await api("/api/admin/lines", {
+          method: "POST",
+          body: {
+            parent_id: node.id,
+            content: String(fd.get("content") || "").trim(),
+            pinyin: String(fd.get("pinyin") || "").trim() || null,
+          },
+        });
+        const data = await api(`/api/nodes/${encodeURIComponent(node.id)}`);
+        await renderMaintainLines(
+          data.node,
+          (data.lines || []).filter((l) => l.parent_id === node.id),
+        );
+      } catch (e) {
+        alert(e.message || e);
+      }
+    });
   }
 
   async function openNode(nodeId) {
@@ -424,17 +973,24 @@
     const children = data.children || [];
     const lines = data.lines || [];
 
-    // 有子目录且非诗篇：继续浏览；诗篇或叶子：进入阅读
+    // 有子目录且非诗篇：在树中展开，不钻入扁平列表
     const browse = children.length > 0 && node.type !== "poem";
     if (browse) {
       state.chapter = null;
       state.lines = [];
       state.lineId = null;
       state.charIndex = -1;
-      state.path = [...state.path, { id: node.id, title: node.title, type: node.type }];
-      renderCrumb();
-      setMode("browse");
-      renderNodeList(node.title, children);
+      if (!state.path.some((p) => p.id === node.id)) {
+        state.path = [...state.path, { id: node.id, title: node.title, type: node.type }];
+      }
+      if (node.work_id && (!state.work || state.work.id !== node.work_id)) {
+        const works = await api("/api/works");
+        state.work = works.find((w) => w.id === node.work_id) || { id: node.work_id, title: node.work_id };
+      }
+      state.treeExpanded.add(treeKey("work", state.work.id));
+      state.treeExpanded.add(treeKey("node", node.id));
+      state.treeChildren.set(treeKey("node", node.id), children);
+      await showBrowseTree();
       return;
     }
 
@@ -528,8 +1084,11 @@
   function renderRead() {
     applyFont();
     const title = state.chapter?.title || "";
+    const video = (state.chapter?.video || "").trim();
+    const remark = (state.chapter?.remark || "").trim();
     panel.innerHTML = `
       <h2 class="read-title">${escapeHtml(title)}</h2>
+      ${extraDisplayHtml(state.chapter, { label: "本章" })}
       <div class="recite-row">
         <button type="button" id="reciteBtn" class="recite-btn">朗诵全文</button>
       </div>
@@ -735,6 +1294,8 @@
             : ""
         }
         <div class="pinyin">${escapeHtml(line.pinyin || "（暂无拼音）")}</div>
+        ${extraDisplayHtml(line, { label: "本句" })}
+        <div class="extra-inline">${extraEditorHtml("line", line.id, line, { compact: true })}</div>
         <div class="recite-row">
           <button type="button" id="reciteBtn" class="recite-btn">朗诵</button>
         </div>
@@ -752,6 +1313,9 @@
       fillLineText(panel.querySelector("#lineKai"), displayText, false);
     }
     renderLineStudy(panel.querySelector("#lineStudy"), interpretations);
+    bindExtraForms(panel, (saved) => {
+      Object.assign(line, { video: saved.video, remark: saved.remark });
+    });
 
     const reciteBtn = panel.querySelector("#reciteBtn");
     const setReciteIdle = () => {
@@ -850,6 +1414,8 @@
         <div class="term-body">
           <div class="term-expl">${escapeHtml(t.explanation || "")}</div>
           ${t.note ? `<div class="term-note">${escapeHtml(t.note)}</div>` : ""}
+          ${extraDisplayHtml(t, { label: "词" })}
+          <div class="extra-inline">${extraEditorHtml("term", t.id, t, { compact: true })}</div>
         </div>
       </div>`,
       )
@@ -859,6 +1425,8 @@
       <div class="segmentation">
         <div class="label">${segLabel}</div>
         <div class="seg-text${segClass}">${escapeHtml(interp.segmentation || "")}</div>
+        ${extraDisplayHtml(interp, { label: "断句" })}
+        <div class="extra-inline">${extraEditorHtml("interpretation", interp.id, interp, { compact: true })}</div>
       </div>
       ${
         !foreign && termsHtml
@@ -891,6 +1459,7 @@
         renderLine();
       });
     });
+    bindExtraForms(box, () => renderLine());
   }
 
   function renderChar() {
@@ -955,16 +1524,11 @@
       state.lines = [];
       state.lineId = null;
       state.charIndex = -1;
-      if (state.path.length) {
-        const last = state.path[state.path.length - 1];
-        state.path = state.path.slice(0, -1);
-        openNode(last.id);
-      } else if (state.work) showWork(state.work.id);
-      else showWorks();
+      showBrowseTree();
     } else if (mode === "read") renderRead();
     else if (mode === "line") renderLine();
     else if (mode === "char") renderChar();
-  });
+      });
 
   if (window.speechSynthesis) {
     speechSynthesis.getVoices();

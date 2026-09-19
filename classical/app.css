@@ -58,17 +58,6 @@ body {
   justify-content: space-between;
   margin-bottom: 1.25rem;
 }
-.brand-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-.home-link {
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-decoration: none;
-}
-.home-link:hover { color: var(--accent); }
 .brand {
   font-family: var(--serif);
   font-size: 1.35rem;
@@ -196,6 +185,71 @@ body {
   color: var(--muted);
   font-size: 0.78rem;
   margin-top: 0.2rem;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.tree-branch {
+  display: flex;
+  flex-direction: column;
+}
+.tree-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.2rem;
+  border-radius: 8px;
+}
+.tree-row.current {
+  background: var(--accent-soft);
+}
+.tree-toggle {
+  flex: 0 0 1.8rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0;
+}
+.tree-toggle.leaf {
+  cursor: default;
+  opacity: 0.45;
+}
+.tree-label {
+  flex: 1;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+.tree-label:hover {
+  border-color: var(--line);
+  background: #fff;
+}
+.tree-label .meta {
+  display: inline;
+  margin-left: 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.tree-children {
+  margin-left: 0.35rem;
+  padding-left: 0.55rem;
+  border-left: 1px dashed var(--line);
+}
+.tree-row.depth-1 { margin-left: 0.2rem; }
+.tree-row.depth-2 { margin-left: 0.2rem; }
+.tree-empty {
+  margin: 0.25rem 0 0.45rem 1.6rem;
+  font-size: 0.78rem;
 }
 
 .read-title {
@@ -425,3 +479,199 @@ body {
   margin-top: 0.75rem;
 }
 .hidden { display: none !important; }
+
+.maintain-form {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.maintain-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.maintain-form label.full { grid-column: 1 / -1; }
+.maintain-form input,
+.maintain-form select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+.maintain-form button[type="submit"] {
+  justify-self: start;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+.maintain-list { gap: 0.45rem; }
+.maintain-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.maintain-row .maintain-open {
+  flex: 1;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+}
+.maintain-row .maintain-open .meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+.maintain-row > button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.maintain-row > button.danger {
+  color: #8b3a2a;
+  border-color: #e0c4b8;
+}
+.maintain-row > button.danger:hover {
+  background: #f8ebe6;
+}
+.maintain-line-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.maintain-line-body .line-edit {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-family: var(--kai);
+  font-size: 1.05rem;
+}
+.linkish {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+.hint code {
+  font-size: 0.9em;
+}
+.chapter-video {
+  margin: 0.35rem 0 0.75rem;
+}
+.chapter-video a,
+.extra-video a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.chapter-video a:hover,
+.extra-video a:hover { text-decoration: underline; }
+.extra-display {
+  margin: 0.35rem 0 0.55rem;
+}
+.extra-remark {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.2rem 0 0;
+  white-space: pre-wrap;
+}
+.extra-form {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+.extra-form.compact {
+  padding: 0.45rem 0.55rem;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+.extra-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.extra-form input,
+.extra-form textarea {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  color: var(--ink);
+  width: 100%;
+  resize: vertical;
+}
+.extra-form button {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+.extra-inline { margin: 0.35rem 0 0.55rem; }
+.maintain-form .label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.35rem;
+}
+.maintain-node {
+  align-items: flex-start;
+}
+.maintain-node-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.maintain-node-main .maintain-open {
+  width: 100%;
+}
+.video-edit-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.video-edit-label .video-edit {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  color: var(--ink);
+}
+
+.brand-wrap { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.home-link { color: #555; text-decoration: none; font-size: 0.85rem; }
+.home-link:hover { color: #1565c0; }
