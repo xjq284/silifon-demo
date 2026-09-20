@@ -16,12 +16,12 @@
 
 @font-face {
   font-family: "Silifon";
-  src: url("../fonts/silifon.ttf") format("truetype");
+  src: url("../fonts/silifon.ttf?v=6c90d701b820") format("truetype");
   font-display: swap;
 }
 @font-face {
   font-family: "Silifon1";
-  src: url("../fonts/silifon1.ttf") format("truetype");
+  src: url("../fonts/silifon1.ttf?v=6c90d701b820") format("truetype");
   font-display: swap;
 }
 @font-face {
