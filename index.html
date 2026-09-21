@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SILIFON</title>
+  <link rel="stylesheet" href="glyph-ui.css" />
   <style>
     @font-face {
       font-family: 'SilifonWeb';
@@ -15,7 +16,11 @@
       src: url('fonts/silifon1.ttf?v=20260920155506') format('truetype');
       font-display: block;
     }
-    :root { font-family: system-ui, -apple-system, sans-serif; }
+    :root {
+      font-family: system-ui, -apple-system, sans-serif;
+      --silifon: "SilifonWeb", serif;
+      --active-font: "SilifonWeb", serif;
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0; padding: 28px 20px 40px;
@@ -24,6 +29,7 @@
     }
     .wrap { max-width: 720px; margin: 0 auto; }
     h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 600; }
+
     .site-nav {
       display: flex; flex-wrap: wrap; gap: 10px;
       margin: -4px 0 18px;
@@ -95,8 +101,6 @@
       border-color: #90caf9;
       background: #f5f9ff;
     }
-    .glyph.no-structure { cursor: default; opacity: 0.85; }
-    .glyph.no-structure:hover { border-color: transparent; background: #fff; }
 
     .hint { margin-top: 16px; font-size: 0.85rem; color: #666; line-height: 1.55; }
     .hint strong { color: #333; font-weight: 600; }
@@ -139,176 +143,6 @@
     #wishList a:hover { text-decoration: underline; }
     #wishList .meta { display: block; font-size: 0.75rem; color: #999; margin-top: 4px; }
     #wishListStatus { font-size: 0.8rem; color: #888; margin: 8px 0 0; }
-
-    /* 字元结构弹窗 */
-    #modalOverlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.4);
-      display: flex; align-items: center; justify-content: center;
-      padding: 16px; z-index: 999;
-    }
-    #modalOverlay[hidden] { display: none; }
-    #modal {
-      width: 100%; max-width: 640px; max-height: 80vh;
-      background: #fff; border-radius: 12px;
-      display: flex; flex-direction: column;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
-    }
-    #modalHead {
-      padding: 14px 16px;
-      border-bottom: 1px solid #eee;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    #modalTitle { font-weight: 600; }
-    #modalClose {
-      border: none; background: #eee; border-radius: 6px;
-      padding: 6px 12px; cursor: pointer;
-    }
-    #modalBody { padding: 16px; overflow: auto; }
-    #modalMeta { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
-    #jgBlock { margin: 0 0 16px; }
-    #jgBlock[hidden] { display: none; }
-    #jgLabel { font-size: 0.8rem; color: #888; margin: 0 0 8px; }
-    #jgGrid {
-      display: flex; flex-wrap: wrap; gap: 8px;
-    }
-    .jg-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 4px;
-    }
-    .jg-thumb {
-      width: 72px; height: 72px;
-      background: #d7d5d0;
-      border-radius: 6px;
-      overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .jg-thumb img { width: 72px; height: 72px; object-fit: contain; }
-    .jg-cap { font-size: 0.62rem; color: #888; max-width: 80px; text-align: center; }
-    #varBlock { margin: 0 0 16px; }
-    #varBlock[hidden] { display: none; }
-    #varLabel { font-size: 0.8rem; color: #888; margin: 0 0 8px; }
-    #varGrid { display: flex; flex-wrap: wrap; gap: 10px; }
-    .var-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 4px;
-    }
-    .var-thumb {
-      width: 88px; height: 88px;
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 6px;
-      overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--silifon-family, 'SilifonWeb');
-      font-size: 52px;
-      line-height: 1;
-      font-feature-settings: "liga" 1, "clig" 1;
-      font-variant-ligatures: common-ligatures;
-    }
-    .var-cap { font-size: 0.65rem; color: #555; }
-    .comp-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-    .comp-card {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 6px; padding: 10px;
-      border: 1px solid #e8e8e8; border-radius: 8px;
-      min-width: 88px; background: #fafafa;
-    }
-    .comp-card.clickable { cursor: pointer; }
-    .comp-card.clickable:hover { border-color: #90caf9; background: #f5f9ff; }
-    .comp-thumb {
-      width: 64px; height: 64px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: "Songti SC", serif;
-      font-size: 2rem;
-      background: #fff; border: 1px solid #eee; border-radius: 6px;
-      overflow: hidden;
-    }
-    .comp-thumb img { width: 64px; height: 64px; object-fit: contain; }
-    .comp-cap { font-size: 0.7rem; color: #555; text-align: center; }
-    .comp-cap code { display: block; font-size: 0.62rem; color: #999; margin-top: 2px; }
-    .empty { color: #999; font-size: 0.9rem; }
-
-    .anim-mod {
-      margin-top: 32px;
-      padding-top: 24px;
-      border-top: 1px solid #eee;
-    }
-    .anim-mod h2 { font-size: 1rem; margin: 0 0 8px; font-weight: 600; }
-    .anim-mod .lead { font-size: 0.85rem; color: #666; line-height: 1.5; margin: 0 0 14px; }
-    .anim-row {
-      display: flex; flex-wrap: wrap; gap: 12px 16px;
-      align-items: flex-end; margin-bottom: 14px;
-    }
-    .anim-row .opt input[type="text"] {
-      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px;
-      font-size: 1.15rem; width: 4.5rem; text-align: center;
-      font-family: "Songti SC", "SimSun", serif;
-    }
-    .anim-row .opt input[type="text"]:focus { border-color: #1565c0; outline: none; }
-    #animPlay, #animReplay {
-      border: none; background: #1565c0; color: #fff;
-      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-    }
-    #animPlay:hover, #animReplay:hover { background: #0d47a1; }
-    #animReplay { background: #546e7a; }
-    #animReplay:hover { background: #455a64; }
-    #animMeta { font-size: 0.85rem; color: #666; margin: 0 0 10px; min-height: 1.2em; }
-    #animStatus { font-size: 0.8rem; color: #888; margin: 10px 0 0; min-height: 1.2em; }
-    .anim-stage-wrap {
-      display: flex; justify-content: center;
-      padding: 16px; background: #fff;
-      border: 1px solid #e8e8e8; border-radius: 12px;
-    }
-    #animStage {
-      position: relative;
-      width: var(--anim-size, 96px);
-      height: var(--anim-size, 96px);
-      background: #fff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      overflow: visible;
-    }
-    .anim-piece {
-      position: absolute;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      transform-origin: 0 0;
-      opacity: 0;
-      transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
-      pointer-events: none;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .anim-piece img, .anim-piece svg {
-      width: 100%; height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-    .anim-piece .glyph-face {
-      font-family: var(--silifon-family, 'SilifonWeb');
-      font-size: var(--anim-size, 96px);
-      line-height: 1;
-      font-feature-settings: "liga" 1, "clig" 1;
-      font-variant-ligatures: common-ligatures;
-    }
-    .anim-piece.final .glyph-face { color: #111; }
-    .anim-piece.visible { opacity: 1; }
-    .anim-piece.highlight {
-      filter: drop-shadow(0 0 6px rgba(21, 101, 192, 0.45));
-    }
-    #animExport {
-      border: none; background: #2e7d32; color: #fff;
-      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-    }
-    #animExport:hover { background: #1b5e20; }
-    #animExport:disabled, #animPlay:disabled, #animReplay:disabled {
-      opacity: 0.55; cursor: wait;
-    }
-    #animStage canvas {
-      display: block; width: 100%; height: 100%;
-      background: #fff;
-      border-radius: 8px;
-    }
   </style>
 </head>
 <body>
@@ -318,6 +152,7 @@
       <a class="current" href="./">字形演示</a>
       <a href="./classical/">古文学习</a>
     </nav>
+
     <div class="opts">
       <div class="opt">
         <label for="fontSize">字体大小</label>
@@ -335,33 +170,10 @@
     <div class="out-label">硅体 <span id="fontStatus"></span></div>
     <div id="silifonOut"></div>
     <p class="hint">
-      点击单字查看字元结构。字体由网页加载，无需本机安装。
+      点击单字查看字元结构与构形动画。字体由网页加载，无需本机安装。
       <strong>第一次打开（或换用 silifon1）要下载数兆字体，可能要等十几秒甚至更久</strong>，请稍候再看字形。
       目前字体已覆盖《千字文》《三字经》《百家姓》等常用汉字，并在每天增加中。
     </p>
-
-    <section class="anim-mod" aria-labelledby="animTitle">
-      <h2 id="animTitle">单字动画</h2>
-      <p class="lead">输入一个单字，按字元构形逐步复合展示（默认字号 96）。可导出为 GIF。</p>
-      <div class="anim-row">
-        <div class="opt">
-          <label for="animChar">单字</label>
-          <input id="animChar" type="text" maxlength="4" placeholder="明" autocomplete="off" />
-        </div>
-        <div class="opt">
-          <label for="animSize">字体大小</label>
-          <input id="animSize" type="number" min="48" max="280" step="8" value="96" />
-        </div>
-        <button id="animPlay" type="button">播放</button>
-        <button id="animReplay" type="button">重播</button>
-        <button id="animExport" type="button">导出 GIF</button>
-      </div>
-      <div id="animMeta"></div>
-      <div class="anim-stage-wrap">
-        <div id="animStage" aria-live="polite"></div>
-      </div>
-      <p id="animStatus"></p>
-    </section>
 
     <section class="feedback" aria-labelledby="wishTitle">
       <h2 id="wishTitle">留言 · 希望哪些字做甲骨文化</h2>
@@ -377,39 +189,15 @@
     </section>
   </div>
 
-  <div id="modalOverlay" hidden>
-    <div id="modal">
-      <div id="modalHead">
-        <span id="modalTitle">字元结构</span>
-        <button id="modalClose" type="button">关闭</button>
-      </div>
-      <div id="modalBody">
-        <div id="varBlock" hidden>
-          <div id="varLabel">字元版本</div>
-          <div id="varGrid"></div>
-        </div>
-        <div id="jgBlock" hidden>
-          <div id="jgLabel">甲骨文</div>
-          <div id="jgGrid"></div>
-        </div>
-        <div id="modalMeta"></div>
-        <div class="comp-grid" id="modalGrid"></div>
-      </div>
-    </div>
-  </div>
-
+  <script src="glyph-ui.js"></script>
+  <script src="glyph-anim.js"></script>
   <script>
-    let compData = null;
-    let jgData = null;
-    let varData = null;
-    let animData = null;
     const loadedFonts = new Map();
     let currentFontKey = 'silifon';
 
     const FONT_VERSION = '20260920155506';
     const WISH_REPO = 'xjq284/silifon-demo';
     const WISH_TITLE_PREFIX = '甲骨文愿望：';
-    const DATA_VERSION = '20260920184854';
     const FONT_FAMILIES = {
       silifon: 'SilifonWeb',
       silifon1: 'Silifon1Web',
@@ -419,255 +207,69 @@
       silifon1: 'fonts/silifon1.ttf?v=' + FONT_VERSION,
     };
 
+    GlyphUI.init({ baseUrl: './' });
+
     const textInput = document.getElementById('textInput');
     const fontSizeInput = document.getElementById('fontSize');
     const fontFileSelect = document.getElementById('fontFile');
     const silifonOut = document.getElementById('silifonOut');
-    const modalOverlay = document.getElementById('modalOverlay');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMeta = document.getElementById('modalMeta');
-    const modalGrid = document.getElementById('modalGrid');
-    const modalClose = document.getElementById('modalClose');
-    const jgBlock = document.getElementById('jgBlock');
-    const jgLabel = document.getElementById('jgLabel');
-    const jgGrid = document.getElementById('jgGrid');
-    const varBlock = document.getElementById('varBlock');
-    const varLabel = document.getElementById('varLabel');
-    const varGrid = document.getElementById('varGrid');
     const fontStatus = document.getElementById('fontStatus');
 
-    fetch('compound_structure.json?v=' + DATA_VERSION)
-      .then(r => r.json())
-      .then(data => { compData = data; render(); })
-      .catch(() => { compData = {}; render(); });
-
-    fetch('compose_anim.json?v=' + DATA_VERSION)
-      .then(r => r.json())
-      .then(data => { animData = data; })
-      .catch(() => { animData = {}; });
-
-    fetch('jiaguwen.json?v=' + DATA_VERSION)
-      .then(r => r.json())
-      .then(data => { jgData = data; })
-      .catch(() => { jgData = {}; });
-
-    fetch('glyph_variants.json?v=' + DATA_VERSION)
-      .then(r => r.json())
-      .then(data => { varData = data; })
-      .catch(() => { varData = {}; });
+    function chars(text) {
+      return Array.from(text || '').filter((ch) => /\S/u.test(ch));
+    }
 
     function fontFamilyId(key) {
       return FONT_FAMILIES[key] || FONT_FAMILIES.silifon;
     }
 
-    function setFontStatus(text) {
-      fontStatus.textContent = text ? ' · ' + text : '';
+    function applyDisplayStyle() {
+      const size = Math.min(120, Math.max(24, Number(fontSizeInput.value) || 48));
+      fontSizeInput.value = String(size);
+      document.documentElement.style.setProperty('--glyph-size', size + 'px');
+      document.documentElement.style.setProperty('--silifon-family', "'" + fontFamilyId(currentFontKey) + "'");
+      document.documentElement.style.setProperty('--silifon', "'" + fontFamilyId(currentFontKey) + "', serif");
+      document.documentElement.style.setProperty('--active-font', "'" + fontFamilyId(currentFontKey) + "', serif");
     }
 
     async function ensureFont(key) {
       if (loadedFonts.has(key)) return loadedFonts.get(key);
       const family = fontFamilyId(key);
-      setFontStatus(loadedFonts.size ? '加载字体，请稍候…' : '首次加载字体较慢，请稍候…');
-      try {
-        if (document.fonts && document.fonts.load) {
-          await document.fonts.load('48px "' + family + '"');
-        } else {
-          const url = FONT_FILES[key];
-          const face = new FontFace(family, 'url(' + url + ')');
-          await face.load();
-          document.fonts.add(face);
-        }
-        loadedFonts.set(key, family);
-        setFontStatus('');
-        return family;
-      } catch (e) {
-        setFontStatus('网页字体加载失败');
-        throw e;
-      }
-    }
-
-    function readFontSize() {
-      const n = parseInt(fontSizeInput.value, 10);
-      if (!Number.isFinite(n)) return 48;
-      return Math.min(120, Math.max(24, n));
-    }
-
-    function applyDisplayStyle() {
-      const px = readFontSize();
-      fontSizeInput.value = String(px);
-      silifonOut.style.setProperty('--glyph-size', px + 'px');
-      const family = "'" + fontFamilyId(currentFontKey) + "'";
-      silifonOut.style.setProperty('--silifon-family', family);
-      document.documentElement.style.setProperty('--silifon-family', family);
+      const url = FONT_FILES[key];
+      const face = new FontFace(family, "url('" + url + "')", { display: 'block' });
+      const p = face.load().then((f) => {
+        document.fonts.add(f);
+        return f;
+      });
+      loadedFonts.set(key, p);
+      return p;
     }
 
     async function setFontFile(key) {
-      currentFontKey = key in FONT_FILES ? key : 'silifon';
-      fontFileSelect.value = currentFontKey;
-      await ensureFont(currentFontKey);
-      applyDisplayStyle();
-      render();
-    }
-
-    function chars(s) {
-      return [...(s || '').trim()];
-    }
-
-    function svgDataUrl(svg) {
-      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    }
-
-    function escapeHtml(s) {
-      const d = document.createElement('div');
-      d.textContent = s == null ? '' : String(s);
-      return d.innerHTML;
+      currentFontKey = key;
+      fontStatus.textContent = '加载中…';
+      try {
+        await ensureFont(key);
+        fontStatus.textContent = '';
+        applyDisplayStyle();
+        render();
+      } catch (e) {
+        fontStatus.textContent = '字体加载失败';
+      }
     }
 
     function render() {
       applyDisplayStyle();
       const list = chars(textInput.value);
       silifonOut.innerHTML = '';
-      if (!list.length) return;
-
-      list.forEach(ch => {
+      list.forEach((ch) => {
         const el = document.createElement('span');
         el.className = 'glyph';
         el.textContent = ch;
-        const hasInfo = (compData && compData[ch]) || (varData && varData[ch]) || (jgData && jgData[ch]);
-        if (!hasInfo) el.classList.add('no-structure');
-        else el.addEventListener('click', () => openStructure(ch, []));
+        el.addEventListener('click', () => GlyphUI.open(ch));
         silifonOut.appendChild(el);
       });
     }
-
-    function canOpen(c, stack) {
-      const name = (c && c.name) || '';
-      if (!name || (stack || []).includes(name)) return false;
-      if (c.kind === 'compound') return !!(compData && compData[name]);
-      return true;
-    }
-
-    function buildCompCard(c, stack) {
-      const card = document.createElement('div');
-      card.className = 'comp-card';
-
-      const thumb = document.createElement('div');
-      thumb.className = 'comp-thumb';
-      if (c.svg) {
-        const img = document.createElement('img');
-        img.src = svgDataUrl(c.svg);
-        img.alt = c.name || '';
-        thumb.appendChild(img);
-      } else {
-        thumb.textContent = c.name || '—';
-        if (c.kind !== 'compound') {
-          thumb.style.fontSize = '0.75rem';
-          thumb.style.color = '#aaa';
-        }
-      }
-
-      const cap = document.createElement('div');
-      cap.className = 'comp-cap';
-      cap.innerHTML = escapeHtml(c.name || c.ref || '') +
-        (c.ref ? '<code>' + escapeHtml(c.ref) + '</code>' : '');
-
-      card.appendChild(thumb);
-      card.appendChild(cap);
-
-      if (canOpen(c, stack)) {
-        card.classList.add('clickable');
-        card.addEventListener('click', () => openStructure(c.name, stack));
-      }
-      return card;
-    }
-
-    function renderJiaguwen(ch) {
-      const variants = jgData && jgData[ch];
-      jgGrid.innerHTML = '';
-      if (!variants || !variants.length) {
-        jgBlock.hidden = true;
-        return;
-      }
-      jgBlock.hidden = false;
-      jgLabel.textContent = '甲骨文 · ' + ch + '（' + variants.length + '）';
-      variants.forEach(v => {
-        const card = document.createElement('div');
-        card.className = 'jg-card';
-        const thumb = document.createElement('div');
-        thumb.className = 'jg-thumb';
-        const img = document.createElement('img');
-        img.src = svgDataUrl(v.svg);
-        img.alt = ch + ' ' + (v.label || '');
-        img.loading = 'lazy';
-        thumb.appendChild(img);
-        const cap = document.createElement('div');
-        cap.className = 'jg-cap';
-        cap.textContent = v.label || ('表' + v.table);
-        card.appendChild(thumb);
-        card.appendChild(cap);
-        jgGrid.appendChild(card);
-      });
-    }
-
-    function renderVariants(ch) {
-      const variants = varData && varData[ch];
-      varGrid.innerHTML = '';
-      if (!variants || variants.length < 2) {
-        varBlock.hidden = true;
-        return;
-      }
-      varBlock.hidden = false;
-      varLabel.textContent = '字元版本（' + variants.length + '）';
-      variants.forEach(v => {
-        const card = document.createElement('div');
-        card.className = 'var-card';
-        const thumb = document.createElement('div');
-        thumb.className = 'var-thumb';
-        thumb.textContent = v.name;
-        const cap = document.createElement('div');
-        cap.className = 'var-cap';
-        cap.textContent = v.name;
-        card.appendChild(thumb);
-        card.appendChild(cap);
-        varGrid.appendChild(card);
-      });
-    }
-
-    function openStructure(ch, stack) {
-      const comp = compData && compData[ch];
-      modalOverlay.hidden = false;
-      modalGrid.innerHTML = '';
-      modalMeta.textContent = '';
-
-      if (comp) {
-        // 复合字：显示字元结构
-        modalTitle.textContent = '字元结构 · ' + ch;
-        varBlock.hidden = true;
-        jgBlock.hidden = true;
-
-        const comps = comp.components || [];
-        let meta = (comp.structure || '') + ' · ' + comps.length + ' 个构件';
-        if (comp.meaning) meta += ' · ' + comp.meaning;
-        modalMeta.textContent = meta;
-
-        const nextStack = stack.slice();
-        if (!nextStack.includes(ch)) nextStack.push(ch);
-        comps.forEach(c => modalGrid.appendChild(buildCompCard(c, nextStack)));
-      } else {
-        // 字元：显示甲骨文 + 多版本变体
-        modalTitle.textContent = '字元详情 · ' + ch;
-        renderVariants(ch);
-        renderJiaguwen(ch);
-        if (varBlock.hidden && jgBlock.hidden) {
-          modalMeta.textContent = '暂无甲骨文或多版本数据';
-        }
-      }
-    }
-
-    modalClose.addEventListener('click', () => { modalOverlay.hidden = true; });
-    modalOverlay.addEventListener('click', e => {
-      if (e.target === modalOverlay) modalOverlay.hidden = true;
-    });
 
     let composing = false;
     textInput.addEventListener('compositionstart', () => { composing = true; });
@@ -683,424 +285,6 @@
     const wishSubmit = document.getElementById('wishSubmit');
     const wishList = document.getElementById('wishList');
     const wishListStatus = document.getElementById('wishListStatus');
-
-    const animCharInput = document.getElementById('animChar');
-    const animSizeInput = document.getElementById('animSize');
-    const animPlayBtn = document.getElementById('animPlay');
-    const animReplayBtn = document.getElementById('animReplay');
-    const animExportBtn = document.getElementById('animExport');
-    const animStage = document.getElementById('animStage');
-    const animMeta = document.getElementById('animMeta');
-    const animStatus = document.getElementById('animStatus');
-    let animToken = 0;
-    let animBusy = false;
-    let gifencMod = null;
-
-    function readAnimSize() {
-      const n = parseInt(animSizeInput.value, 10);
-      if (!Number.isFinite(n)) return 96;
-      return Math.min(280, Math.max(48, n));
-    }
-
-    function readAnimChar() {
-      const list = chars(animCharInput.value);
-      return list.length ? list[0] : '';
-    }
-
-    function waitAnimDataReady() {
-      return new Promise(resolve => {
-        if (animData !== null && compData !== null) {
-          resolve();
-          return;
-        }
-        const t0 = Date.now();
-        const id = setInterval(() => {
-          if ((animData !== null && compData !== null) || Date.now() - t0 > 8000) {
-            clearInterval(id);
-            resolve();
-          }
-        }, 40);
-      });
-    }
-
-    function setAnimBusy(busy) {
-      animBusy = !!busy;
-      animPlayBtn.disabled = animBusy;
-      animReplayBtn.disabled = animBusy;
-      animExportBtn.disabled = animBusy;
-    }
-
-    function easeOutCubic(t) {
-      return 1 - Math.pow(1 - t, 3);
-    }
-
-    function lerp(a, b, t) {
-      return a + (b - a) * t;
-    }
-
-    function introPose(index, total, size) {
-      const mid = (total - 1) / 2;
-      const dx = (index - mid) * Math.min(size * 0.18, 28);
-      // 保持在画布内，避免上缘被裁切
-      return { x: dx, y: size * 0.08, scale: 0.4, scale_y: 0.4, rotate: 0, alpha: 0 };
-    }
-
-    function finalPose(tr, size) {
-      return {
-        x: ((tr && tr.x) || 0) / 1000 * size,
-        y: ((tr && tr.y) || 0) / 1000 * size,
-        scale: (tr && tr.scale != null) ? tr.scale : 1,
-        scale_y: (tr && tr.scale_y != null) ? tr.scale_y : ((tr && tr.scale != null) ? tr.scale : 1),
-        rotate: (tr && tr.rotate) || 0,
-        alpha: 1,
-      };
-    }
-
-    function mixPose(a, b, t) {
-      return {
-        x: lerp(a.x, b.x, t),
-        y: lerp(a.y, b.y, t),
-        scale: lerp(a.scale, b.scale, t),
-        scale_y: lerp(a.scale_y, b.scale_y, t),
-        rotate: lerp(a.rotate, b.rotate, t),
-        alpha: lerp(a.alpha, b.alpha, t),
-      };
-    }
-
-    function loadSvgImage(svg) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = svgDataUrl(svg);
-      });
-    }
-
-    async function buildAnimAssets(ch, size) {
-      const info = animData && animData[ch];
-      const structComp = compData && compData[ch];
-      const svgList = (structComp && structComp.components) || [];
-      const comps = (info && info.components) || [];
-      const pieces = [];
-      for (let i = 0; i < comps.length; i++) {
-        const comp = comps[i];
-        const byIndex = svgList[i];
-        const byName = svgList.find(s => s && s.name === comp.name);
-        const svg = (byIndex && byIndex.svg) || (byName && byName.svg) || null;
-        let img = null;
-        if (svg) {
-          try { img = await loadSvgImage(svg); } catch (e) { img = null; }
-        }
-        pieces.push({
-          name: comp.name || '',
-          transform: comp.transform || {},
-          img: img,
-        });
-      }
-      return {
-        char: ch,
-        structure: (info && info.structure) || '',
-        pieces: pieces,
-        size: size,
-        family: fontFamilyId(currentFontKey),
-      };
-    }
-
-    function ensureAnimCanvas(size) {
-      animStage.style.setProperty('--anim-size', size + 'px');
-      let canvas = animStage.querySelector('canvas');
-      if (!canvas) {
-        animStage.innerHTML = '';
-        canvas = document.createElement('canvas');
-        animStage.appendChild(canvas);
-      }
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(size * dpr);
-      canvas.height = Math.round(size * dpr);
-      canvas.style.width = size + 'px';
-      canvas.style.height = size + 'px';
-      const ctx = canvas.getContext('2d');
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      return { canvas: canvas, ctx: ctx, dpr: dpr };
-    }
-
-    function drawPiece(ctx, piece, pose, size, family, highlight) {
-      if (!pose || pose.alpha <= 0.01) return;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, pose.alpha));
-      ctx.translate(pose.x, pose.y);
-      ctx.rotate((pose.rotate || 0) * Math.PI / 180);
-      ctx.scale(pose.scale, pose.scale_y);
-      if (highlight) {
-        ctx.shadowColor = 'rgba(21, 101, 192, 0.45)';
-        ctx.shadowBlur = 8;
-      }
-      if (piece.img) {
-        ctx.drawImage(piece.img, 0, 0, size, size);
-      } else {
-        ctx.fillStyle = '#111';
-        ctx.font = size + 'px "' + family + '"';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(piece.name || '·', size / 2, size / 2);
-      }
-      ctx.restore();
-    }
-
-    function drawAnimFrame(ctx, assets, state) {
-      const size = assets.size;
-      // 留边，避免笔画贴边/圆角裁切导致「画面偏上缺一截」
-      const pad = Math.max(3, size * 0.05);
-      const scale = (size - pad * 2) / size;
-      ctx.clearRect(0, 0, size, size);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, size, size);
-      ctx.save();
-      ctx.translate(pad, pad);
-      ctx.scale(scale, scale);
-      const n = assets.pieces.length;
-      for (let i = 0; i < n; i++) {
-        const pose = state.poses[i];
-        if (!pose) continue;
-        drawPiece(ctx, assets.pieces[i], pose, size, assets.family, state.highlight === i);
-      }
-      if (state.finalAlpha > 0.01) {
-        ctx.save();
-        ctx.globalAlpha = state.finalAlpha;
-        const s = state.finalScale || 1;
-        ctx.translate(size / 2, size / 2);
-        ctx.scale(s, s);
-        ctx.translate(-size / 2, -size / 2);
-        ctx.fillStyle = '#111';
-        ctx.font = size + 'px "' + assets.family + '"';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(assets.char, size / 2, size / 2);
-        ctx.restore();
-      }
-      ctx.restore();
-    }
-
-    function buildAnimTimeline(assets) {
-      const n = assets.pieces.length;
-      const size = assets.size;
-      const events = [];
-      let t = 0;
-      if (!n) {
-        events.push({ t0: 0, t1: 400, kind: 'final', from: 0, to: 1 });
-        return { duration: 900, events: events };
-      }
-      for (let i = 0; i < n; i++) {
-        const intro = introPose(i, n, size);
-        intro.alpha = 0;
-        const shown = Object.assign({}, intro, { alpha: 1 });
-        const fin = finalPose(assets.pieces[i].transform, size);
-        events.push({ t0: t, t1: t + 280, kind: 'piece', index: i, from: intro, to: shown });
-        t += 280;
-        events.push({ t0: t, t1: t + 720, kind: 'piece', index: i, from: shown, to: fin });
-        t += 720;
-        events.push({ t0: t, t1: t + 120, kind: 'hold' });
-        t += 120;
-      }
-      events.push({ t0: t, t1: t + 500, kind: 'toFinal' });
-      t += 500;
-      events.push({ t0: t, t1: t + 700, kind: 'holdFinal' });
-      t += 700;
-      return { duration: t, events: events };
-    }
-
-    function sampleAnimState(assets, timeline, timeMs) {
-      const n = assets.pieces.length;
-      const poses = [];
-      for (let i = 0; i < n; i++) {
-        const p = introPose(i, n, assets.size);
-        p.alpha = 0;
-        poses.push(p);
-      }
-      let highlight = -1;
-      let finalAlpha = 0;
-      let finalScale = 1;
-      let status = '';
-      let phase = 'init';
-      for (const ev of timeline.events) {
-        if (timeMs < ev.t0) break;
-        const u = ev.t1 === ev.t0 ? 1 : Math.max(0, Math.min(1, (timeMs - ev.t0) / (ev.t1 - ev.t0)));
-        const e = easeOutCubic(u);
-        const active = timeMs < ev.t1;
-        if (ev.kind === 'piece') {
-          poses[ev.index] = active ? mixPose(ev.from, ev.to, e) : Object.assign({}, ev.to);
-          if (active) {
-            highlight = ev.index;
-            status = '放入「' + assets.pieces[ev.index].name + '」（' + (ev.index + 1) + '/' + n + '）';
-            phase = 'piece';
-          }
-        } else if (ev.kind === 'toFinal') {
-          for (let i = 0; i < n; i++) {
-            const base = finalPose(assets.pieces[i].transform, assets.size);
-            poses[i] = Object.assign({}, base, { alpha: 1 - 0.78 * (active ? e : 1) });
-          }
-          finalAlpha = active ? e : 1;
-          finalScale = active ? lerp(0.86, 1, e) : 1;
-          highlight = -1;
-          status = '合成整字';
-          phase = 'toFinal';
-        } else if (ev.kind === 'holdFinal' || ev.kind === 'final') {
-          for (let i = 0; i < n; i++) {
-            poses[i] = Object.assign({}, finalPose(assets.pieces[i].transform, assets.size), { alpha: 0 });
-          }
-          finalAlpha = 1;
-          finalScale = 1;
-          highlight = -1;
-          status = '完成';
-          phase = 'done';
-        }
-      }
-      if (timeMs >= timeline.duration) {
-        status = '完成';
-        phase = 'done';
-      }
-      return {
-        poses: poses,
-        highlight: highlight,
-        finalAlpha: finalAlpha,
-        finalScale: finalScale,
-        status: status,
-        phase: phase,
-      };
-    }
-
-    async function playComposeAnim() {
-      if (animBusy) return;
-      const ch = readAnimChar();
-      const size = readAnimSize();
-      animSizeInput.value = String(size);
-      animMeta.textContent = '';
-      animStatus.textContent = '';
-      if (!ch) {
-        animStatus.textContent = '请先输入一个单字';
-        animCharInput.focus();
-        return;
-      }
-      const token = ++animToken;
-      setAnimBusy(true);
-      try {
-        await waitAnimDataReady();
-        await ensureFont(currentFontKey);
-        const assets = await buildAnimAssets(ch, size);
-        if (!assets.pieces.length) {
-          animMeta.textContent = ch + ' · 暂无构形数据，直接显示整字';
-        } else {
-          animMeta.textContent = ch + ' · ' + assets.structure + ' · ' + assets.pieces.map(p => p.name).join(' + ');
-        }
-        const { ctx } = ensureAnimCanvas(size);
-        const timeline = buildAnimTimeline(assets);
-        const t0 = performance.now();
-        await new Promise(resolve => {
-          function frame(now) {
-            if (token !== animToken) { resolve(); return; }
-            const t = now - t0;
-            const state = sampleAnimState(assets, timeline, t);
-            drawAnimFrame(ctx, assets, state);
-            if (state.status) animStatus.textContent = state.status;
-            if (t >= timeline.duration) {
-              animStatus.textContent = '完成';
-              resolve();
-              return;
-            }
-            requestAnimationFrame(frame);
-          }
-          requestAnimationFrame(frame);
-        });
-      } catch (e) {
-        if (token === animToken) animStatus.textContent = '动画失败';
-      } finally {
-        if (token === animToken) setAnimBusy(false);
-      }
-    }
-
-    async function loadGifenc() {
-      if (gifencMod) return gifencMod;
-      gifencMod = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm');
-      return gifencMod;
-    }
-
-    async function exportAnimGif() {
-      if (animBusy) return;
-      const ch = readAnimChar();
-      let size = readAnimSize();
-      if (!ch) {
-        animStatus.textContent = '请先输入一个单字再导出';
-        animCharInput.focus();
-        return;
-      }
-      // GIF 体积控制：导出边长上限 180
-      size = Math.min(size, 180);
-      const token = ++animToken;
-      setAnimBusy(true);
-      animStatus.textContent = '正在生成 GIF…';
-      try {
-        await waitAnimDataReady();
-        await ensureFont(currentFontKey);
-        const assets = await buildAnimAssets(ch, size);
-        if (!assets.pieces.length) {
-          animMeta.textContent = ch + ' · 暂无构形数据，直接显示整字';
-        } else {
-          animMeta.textContent = ch + ' · ' + assets.structure + ' · ' + assets.pieces.map(p => p.name).join(' + ');
-        }
-        const timeline = buildAnimTimeline(assets);
-        const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        // 同时在舞台预览
-        const view = ensureAnimCanvas(readAnimSize());
-        const fps = 12;
-        const frameDelay = Math.round(1000 / fps);
-        const gif = GIFEncoder();
-        let written = 0;
-        for (let t = 0; t <= timeline.duration; t += frameDelay) {
-          if (token !== animToken) return;
-          const state = sampleAnimState(assets, timeline, t);
-          drawAnimFrame(ctx, assets, state);
-          // preview scaled
-          view.ctx.clearRect(0, 0, readAnimSize(), readAnimSize());
-          view.ctx.drawImage(canvas, 0, 0, readAnimSize(), readAnimSize());
-          const data = ctx.getImageData(0, 0, size, size).data;
-          const palette = quantize(data, 256);
-          const index = applyPalette(data, palette);
-          gif.writeFrame(index, size, size, { palette: palette, delay: frameDelay });
-          written += 1;
-          if (written % 4 === 0) {
-            animStatus.textContent = '正在生成 GIF… ' + Math.min(100, Math.round(t / timeline.duration * 100)) + '%';
-            await new Promise(r => setTimeout(r, 0));
-          }
-        }
-        gif.finish();
-        const bytes = gif.bytes();
-        const blob = new Blob([bytes], { type: 'image/gif' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'silifon-anim-' + ch + '.gif';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        animStatus.textContent = '已导出 silifon-anim-' + ch + '.gif';
-      } catch (e) {
-        console.error(e);
-        animStatus.textContent = '导出 GIF 失败（请检查网络以加载编码器）';
-      } finally {
-        if (token === animToken) setAnimBusy(false);
-      }
-    }
-
-    animPlayBtn.addEventListener('click', () => { playComposeAnim(); });
-    animReplayBtn.addEventListener('click', () => { playComposeAnim(); });
-    animExportBtn.addEventListener('click', () => { exportAnimGif(); });
-    animCharInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') playComposeAnim();
-    });
 
     function openWishIssue() {
       const charsText = (wishChars.value || '').trim();
@@ -1120,12 +304,12 @@
     function loadWishList() {
       wishListStatus.textContent = '正在读取已有留言…';
       fetch('https://api.github.com/repos/' + WISH_REPO + '/issues?state=open&per_page=30')
-        .then(r => {
+        .then((r) => {
           if (!r.ok) throw new Error('http ' + r.status);
           return r.json();
         })
-        .then(items => {
-          const wishes = (items || []).filter(it =>
+        .then((items) => {
+          const wishes = (items || []).filter((it) =>
             !it.pull_request && String(it.title || '').startsWith(WISH_TITLE_PREFIX)
           );
           wishList.innerHTML = '';
@@ -1134,7 +318,7 @@
             return;
           }
           wishListStatus.textContent = '最近留言';
-          wishes.forEach(it => {
+          wishes.forEach((it) => {
             const li = document.createElement('li');
             const a = document.createElement('a');
             a.href = it.html_url;
@@ -1156,7 +340,7 @@
     }
 
     wishSubmit.addEventListener('click', openWishIssue);
-    wishChars.addEventListener('keydown', e => {
+    wishChars.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') openWishIssue();
     });
     loadWishList();
@@ -1165,13 +349,7 @@
 
     const q = new URLSearchParams(location.search);
     const init = q.get('text') || q.get('char') || '';
-    if (init) {
-      textInput.value = init;
-      const wait = setInterval(() => {
-        if (compData !== null) { clearInterval(wait); render(); }
-      }, 50);
-      setTimeout(() => clearInterval(wait), 5000);
-    }
+    if (init) textInput.value = init;
   </script>
 </body>
 </html>
