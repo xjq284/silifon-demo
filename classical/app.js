@@ -9,7 +9,7 @@
     charIndex: -1,
     interpIndex: 0,
     font: "kai",
-    readSize: localStorage.getItem("classical.readSize") || "m",
+    readSize: null,
     treeExpanded: new Set(),
     treeChildren: new Map(), // work:id | node:id -> children[]
   };
@@ -21,20 +21,28 @@
     seal: "var(--seal)",
   };
 
-  const READ_SIZES = {
-    s: "1.15rem",
-    m: "1.55rem",
-    l: "2.05rem",
-    xl: "2.7rem",
-  };
+  const READ_SIZE_MIN = 14;
+  const READ_SIZE_MAX = 64;
+  const READ_SIZE_DEFAULT = 25;
+  const READ_SIZE_LEGACY = { s: 18, m: 25, l: 33, xl: 43 };
+
+  function parseReadSize(raw) {
+    if (raw != null && READ_SIZE_LEGACY[raw] != null) return READ_SIZE_LEGACY[raw];
+    const n = Number(raw);
+    if (Number.isFinite(n)) {
+      return Math.min(READ_SIZE_MAX, Math.max(READ_SIZE_MIN, Math.round(n)));
+    }
+    return READ_SIZE_DEFAULT;
+  }
+
+  state.readSize = parseReadSize(localStorage.getItem("classical.readSize"));
 
   function applyReadSize() {
-    const key = READ_SIZES[state.readSize] ? state.readSize : "m";
-    state.readSize = key;
-    document.documentElement.style.setProperty("--read-size", READ_SIZES[key]);
-    document.querySelectorAll("[data-read-size]").forEach((b) => {
-      b.classList.toggle("active", b.dataset.readSize === key);
-    });
+    const size = parseReadSize(state.readSize);
+    state.readSize = size;
+    document.documentElement.style.setProperty("--read-size", `${size}px`);
+    const input = document.getElementById("readSizeInput");
+    if (input) input.value = String(size);
   }
 
   const panel = document.getElementById("panel");
@@ -1107,12 +1115,9 @@
       <h2 class="read-title">${escapeHtml(title)}</h2>
       ${extraDisplayHtml(state.chapter, { label: "本章" })}
       <div class="read-tools">
-        <div class="read-sizebar" role="group" aria-label="字体大小">
-          <span class="read-size-label">字号</span>
-          <button type="button" data-read-size="s">小</button>
-          <button type="button" data-read-size="m">中</button>
-          <button type="button" data-read-size="l">大</button>
-          <button type="button" data-read-size="xl">特大</button>
+        <div class="read-sizebar">
+          <label class="read-size-label" for="readSizeInput">字号</label>
+          <input id="readSizeInput" type="number" min="${READ_SIZE_MIN}" max="${READ_SIZE_MAX}" step="2" value="${state.readSize}" />
         </div>
         <button type="button" id="reciteBtn" class="recite-btn">朗诵全文</button>
       </div>
@@ -1120,11 +1125,14 @@
       <p class="hint">点一句进入「逐句学习」。</p>
     `;
     applyReadSize();
-    panel.querySelector(".read-sizebar").addEventListener("click", (ev) => {
-      const b = ev.target.closest("button[data-read-size]");
-      if (!b) return;
-      state.readSize = b.dataset.readSize;
-      localStorage.setItem("classical.readSize", state.readSize);
+    panel.querySelector("#readSizeInput").addEventListener("input", (ev) => {
+      state.readSize = parseReadSize(ev.target.value);
+      localStorage.setItem("classical.readSize", String(state.readSize));
+      applyReadSize();
+    });
+    panel.querySelector("#readSizeInput").addEventListener("change", (ev) => {
+      state.readSize = parseReadSize(ev.target.value);
+      localStorage.setItem("classical.readSize", String(state.readSize));
       applyReadSize();
     });
     const body = panel.querySelector("#readBody");
