@@ -72,13 +72,12 @@
   background: #fff;
   border: 1px solid #eee;
   border-radius: 6px;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--silifon, "Silifon"), serif;
-  font-size: 52px;
-  line-height: 1;
 }
+.glyph-var-thumb img { width: 88px; height: 88px; object-fit: contain; }
 .glyph-comp-card {
   padding: 10px;
   border: 1px solid #e8e8e8;

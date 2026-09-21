@@ -31,6 +31,16 @@
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
 
+  /** glif 库存的是骨架 path，缩略图需补笔画，否则开口线看不见。 */
+  function strokeSvg(svg) {
+    if (!svg || /\bstroke=/.test(svg)) return svg;
+    return svg.replace(/<path\b([^>]*?)\/?>/g, (full, attrs) => {
+      if (/\bfill=/.test(attrs) && !/fill=["']none["']/.test(attrs)) return full;
+      const cleaned = attrs.replace(/\s*\/\s*$/, "");
+      return `<path${cleaned} fill="none" stroke="#000000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" />`;
+    });
+  }
+
   function escapeHtml(s) {
     return String(s ?? "")
       .replaceAll("&", "&amp;")
@@ -192,7 +202,10 @@
       card.className = "glyph-var-card";
       const thumb = document.createElement("div");
       thumb.className = "glyph-var-thumb";
-      thumb.textContent = v.name;
+      const img = document.createElement("img");
+      img.src = svgDataUrl(strokeSvg(v.svg));
+      img.alt = v.name || ch;
+      thumb.appendChild(img);
       const cap = document.createElement("div");
       cap.className = "glyph-cap";
       cap.textContent = v.name;
