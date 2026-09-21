@@ -9,6 +9,7 @@
     charIndex: -1,
     interpIndex: 0,
     font: "kai",
+    readSize: localStorage.getItem("classical.readSize") || "m",
     treeExpanded: new Set(),
     treeChildren: new Map(), // work:id | node:id -> children[]
   };
@@ -19,6 +20,22 @@
     silifon1: "var(--silifon1)",
     seal: "var(--seal)",
   };
+
+  const READ_SIZES = {
+    s: "1.15rem",
+    m: "1.55rem",
+    l: "2.05rem",
+    xl: "2.7rem",
+  };
+
+  function applyReadSize() {
+    const key = READ_SIZES[state.readSize] ? state.readSize : "m";
+    state.readSize = key;
+    document.documentElement.style.setProperty("--read-size", READ_SIZES[key]);
+    document.querySelectorAll("[data-read-size]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.readSize === key);
+    });
+  }
 
   const panel = document.getElementById("panel");
   const crumb = document.getElementById("crumb");
@@ -1089,12 +1106,27 @@
     panel.innerHTML = `
       <h2 class="read-title">${escapeHtml(title)}</h2>
       ${extraDisplayHtml(state.chapter, { label: "本章" })}
-      <div class="recite-row">
+      <div class="read-tools">
+        <div class="read-sizebar" role="group" aria-label="字体大小">
+          <span class="read-size-label">字号</span>
+          <button type="button" data-read-size="s">小</button>
+          <button type="button" data-read-size="m">中</button>
+          <button type="button" data-read-size="l">大</button>
+          <button type="button" data-read-size="xl">特大</button>
+        </div>
         <button type="button" id="reciteBtn" class="recite-btn">朗诵全文</button>
       </div>
       <div class="read-body" id="readBody"></div>
       <p class="hint">点一句进入「逐句学习」。</p>
     `;
+    applyReadSize();
+    panel.querySelector(".read-sizebar").addEventListener("click", (ev) => {
+      const b = ev.target.closest("button[data-read-size]");
+      if (!b) return;
+      state.readSize = b.dataset.readSize;
+      localStorage.setItem("classical.readSize", state.readSize);
+      applyReadSize();
+    });
     const body = panel.querySelector("#readBody");
     const lineEls = new Map();
     state.lines.forEach((line) => {
@@ -1476,7 +1508,7 @@
     const code = `U+${ch.codePointAt(0).toString(16).toUpperCase()}`;
     panel.innerHTML = `
       <div class="char-focus">
-        <div class="big">${escapeHtml(ch)}</div>
+        <div class="big" id="charBig" title="查看字元结构">${escapeHtml(ch)}</div>
         <div class="code">${escapeHtml(ch)} · ${code}</div>
       </div>
       <div class="char-grid" id="charGrid"></div>
@@ -1485,8 +1517,12 @@
         <div class="progress">${state.charIndex + 1} / ${chars.length}</div>
         <button type="button" id="nextChar" ${state.charIndex >= chars.length - 1 ? "disabled" : ""}>下一字</button>
       </div>
-      <p class="hint">当前句：${escapeHtml(line.content)}</p>
+      <p class="hint">点大字或句中单字查看字元结构。当前句：${escapeHtml(line.content)}</p>
     `;
+    const openGlyph = (c) => {
+      if (window.GlyphUI) GlyphUI.open(c);
+    };
+    panel.querySelector("#charBig").addEventListener("click", () => openGlyph(ch));
     const grid = panel.querySelector("#charGrid");
     chars.forEach((c, i) => {
       const b = document.createElement("button");
@@ -1496,6 +1532,7 @@
       b.addEventListener("click", () => {
         state.charIndex = i;
         renderChar();
+        if (window.GlyphUI) GlyphUI.open(c);
       });
       grid.appendChild(b);
     });
@@ -1563,6 +1600,10 @@
   });
 
   applyFont();
+  applyReadSize();
+  if (window.GlyphUI) {
+    GlyphUI.init({ baseUrl: window.GLYPH_DATA_BASE || "/glyph-data/" });
+  }
   setMode("browse");
   showWorks().catch((e) => {
     panel.innerHTML = `<p class="hint">加载失败：${escapeHtml(e.message || e)}</p>`;
