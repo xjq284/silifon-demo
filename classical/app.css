@@ -663,7 +663,6 @@ body {
   font: inherit;
   font-size: 0.82rem;
 }
-.extra-inline { margin: 0.35rem 0 0.55rem; }
 .maintain-form .label {
   color: var(--muted);
   font-size: 0.75rem;

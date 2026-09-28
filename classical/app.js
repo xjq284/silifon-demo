@@ -1335,7 +1335,6 @@
         }
         <div class="pinyin">${escapeHtml(line.pinyin || "（暂无拼音）")}</div>
         ${extraDisplayHtml(line, { label: "本句" })}
-        <div class="extra-inline">${extraEditorHtml("line", line.id, line, { compact: true })}</div>
         <div class="recite-row">
           <button type="button" id="reciteBtn" class="recite-btn">朗诵</button>
         </div>
@@ -1353,9 +1352,6 @@
       fillLineText(panel.querySelector("#lineKai"), displayText, false);
     }
     renderLineStudy(panel.querySelector("#lineStudy"), interpretations);
-    bindExtraForms(panel, (saved) => {
-      Object.assign(line, { video: saved.video, remark: saved.remark });
-    });
 
     const reciteBtn = panel.querySelector("#reciteBtn");
     const setReciteIdle = () => {
@@ -1455,7 +1451,6 @@
           <div class="term-expl">${escapeHtml(t.explanation || "")}</div>
           ${t.note ? `<div class="term-note">${escapeHtml(t.note)}</div>` : ""}
           ${extraDisplayHtml(t, { label: "词" })}
-          <div class="extra-inline">${extraEditorHtml("term", t.id, t, { compact: true })}</div>
         </div>
       </div>`,
       )
@@ -1466,7 +1461,6 @@
         <div class="label">${segLabel}</div>
         <div class="seg-text${segClass}">${escapeHtml(interp.segmentation || "")}</div>
         ${extraDisplayHtml(interp, { label: "断句" })}
-        <div class="extra-inline">${extraEditorHtml("interpretation", interp.id, interp, { compact: true })}</div>
       </div>
       ${
         !foreign && termsHtml
@@ -1499,7 +1493,6 @@
         renderLine();
       });
     });
-    bindExtraForms(box, () => renderLine());
   }
 
   function renderChar() {
