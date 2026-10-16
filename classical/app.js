@@ -76,7 +76,7 @@
   }
 
 
-  const CORPUS_VERSION = "fa1b37d76258";
+  const CORPUS_VERSION = "94d260c6ae35";
   let corpus = null;
 
   async function loadCorpus() {
