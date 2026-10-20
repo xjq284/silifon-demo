@@ -1195,6 +1195,7 @@
       alert("朗诵模块未加载。");
       return null;
     }
+    ClassicalTTS.unlockAudio();
     ClassicalTTS.speakQueue([{ text, lang }], { onEnd });
     return true;
   }
@@ -1204,6 +1205,7 @@
       alert("朗诵模块未加载。");
       return;
     }
+    ClassicalTTS.unlockAudio();
     ClassicalTTS.speakQueue(
       lines.map((line) => ({ text: line.content, lang: "zh-CN", line })),
       {
