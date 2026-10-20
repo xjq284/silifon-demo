@@ -1164,7 +1164,7 @@
       reciteBtn.classList.add("playing");
     };
     reciteBtn.addEventListener("click", () => {
-      if (speechSynthesis.speaking) {
+      if (reciteBtn.classList.contains("playing")) {
         stopRecite();
         setReciteIdle();
         return;
@@ -1185,92 +1185,32 @@
     });
   }
 
-  let reciteGen = 0;
-
   function stopRecite() {
-    reciteGen += 1;
-    if (window.speechSynthesis) speechSynthesis.cancel();
-  }
-
-  function pickVoice(lang) {
-    if (!window.speechSynthesis) return null;
-    const voices = speechSynthesis.getVoices();
-    if (/^en/i.test(lang)) {
-      return (
-        voices.find((v) => /^en(-|$)/i.test(v.lang) && /US|GB|UK|EN/i.test(v.lang)) ||
-        voices.find((v) => /^en/i.test(v.lang)) ||
-        null
-      );
-    }
-    if (/^(sa|hi)/i.test(lang)) {
-      return (
-        voices.find((v) => /^sa/i.test(v.lang)) ||
-        voices.find((v) => /^hi/i.test(v.lang)) ||
-        null
-      );
-    }
-    return (
-      voices.find((v) => /^zh(-|$)/i.test(v.lang) && /CN|China|中文|普通话|国语/i.test(v.name + v.lang)) ||
-      voices.find((v) => /^zh/i.test(v.lang)) ||
-      null
-    );
-  }
-
-  function pickZhVoice() {
-    return pickVoice("zh-CN");
-  }
-
-  function makeUtterance(text, lang = "zh-CN") {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = /^en/i.test(lang) ? 0.95 : /^(sa|hi)/i.test(lang) ? 0.9 : 0.82;
-    u.pitch = 1;
-    const voice = pickVoice(lang);
-    if (voice) u.voice = voice;
-    return u;
+    if (window.ClassicalTTS) ClassicalTTS.stop();
+    else if (window.speechSynthesis) speechSynthesis.cancel();
   }
 
   function reciteText(text, onEnd, lang = "zh-CN") {
-    if (!window.speechSynthesis) {
-      alert("当前浏览器不支持朗诵。");
+    if (!window.ClassicalTTS) {
+      alert("朗诵模块未加载。");
       return null;
     }
-    const gen = ++reciteGen;
-    speechSynthesis.cancel();
-    const u = makeUtterance(text, lang);
-    const done = () => {
-      if (gen === reciteGen) onEnd?.();
-    };
-    u.onend = done;
-    u.onerror = done;
-    speechSynthesis.speak(u);
-    return u;
+    ClassicalTTS.speakQueue([{ text, lang }], { onEnd });
+    return true;
   }
 
   function reciteLines(lines, { onLine, onEnd } = {}) {
-    if (!window.speechSynthesis) {
-      alert("当前浏览器不支持朗诵。");
+    if (!window.ClassicalTTS) {
+      alert("朗诵模块未加载。");
       return;
     }
-    const gen = ++reciteGen;
-    speechSynthesis.cancel();
-    let i = 0;
-    const next = () => {
-      if (gen !== reciteGen) return;
-      if (i >= lines.length) {
-        onEnd?.();
-        return;
-      }
-      const line = lines[i++];
-      onLine?.(line);
-      const u = makeUtterance(line.content);
-      u.onend = next;
-      u.onerror = () => {
-        if (gen === reciteGen) onEnd?.();
-      };
-      speechSynthesis.speak(u);
-    };
-    next();
+    ClassicalTTS.speakQueue(
+      lines.map((line) => ({ text: line.content, lang: "zh-CN", line })),
+      {
+        onItem: (item) => onLine?.(item.line || item),
+        onEnd,
+      },
+    );
   }
 
   function fillLineText(el, content, interactive) {
@@ -1363,7 +1303,7 @@
       reciteBtn.classList.add("playing");
     };
     reciteBtn.addEventListener("click", () => {
-      if (speechSynthesis.speaking) {
+      if (reciteBtn.classList.contains("playing")) {
         stopRecite();
         setReciteIdle();
         return;
@@ -1568,11 +1508,8 @@
     else if (mode === "char") renderChar();
       });
 
-  if (window.speechSynthesis) {
-    speechSynthesis.getVoices();
-    speechSynthesis.addEventListener("voiceschanged", () => {
-      speechSynthesis.getVoices();
-    });
+  if (window.ClassicalTTS) {
+    ClassicalTTS.ensureMode().catch(() => {});
   }
 
   fontbar.addEventListener("click", (ev) => {
