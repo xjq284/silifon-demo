@@ -1,5 +1,5 @@
 /**
- * Classical TTS：优先本地 /api/tts（edge-tts 神经语音），
+ * Classical TTS：本地 /api/tts（Drama3 → Fish免费档 → edge-tts），
  * 静态站回退百度翻译 TTS，再回退浏览器 speechSynthesis。
  */
 (() => {
@@ -13,11 +13,10 @@
     sa: "hi-IN-SwaraNeural",
   };
 
-  // 极短静音 wav，用于在用户点击手势内解锁 Audio.play()
   const SILENT_WAV =
     "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
-  let mode = null; // "edge-api" | "baidu" | "webspeech"
+  let mode = null; // "local-api" | "baidu" | "webspeech"
   let audioUnlocked = false;
   let currentAudio = null;
   let gen = 0;
@@ -55,7 +54,6 @@
     return out;
   }
 
-  /** 必须在用户点击的同步调用栈里执行，否则后续 Audio.play 会被浏览器拦住。 */
   function unlockAudio() {
     if (audioUnlocked) return;
     try {
@@ -94,9 +92,9 @@
     });
   }
 
-  async function probeEdgeApi() {
+  async function probeLocalApi() {
     try {
-      const r = await fetch(`/api/tts?text=${encodeURIComponent("测")}&lang=zh-CN`, {
+      const r = await fetch(`/api/tts?text=${encodeURIComponent("测")}&lang=zh-CN&engine=auto`, {
         cache: "no-store",
       });
       if (!r.ok) return false;
@@ -110,12 +108,11 @@
   }
 
   async function ensureMode() {
-    // 每次朗诵都再探一次本地 API，避免启动时探测失败后永远卡在回退引擎
-    if (await probeEdgeApi()) {
-      mode = "edge-api";
+    if (await probeLocalApi()) {
+      mode = "local-api";
       return mode;
     }
-    if (mode === "edge-api") mode = null;
+    if (mode === "local-api") mode = null;
     if (!mode) mode = "baidu";
     return mode;
   }
@@ -187,20 +184,24 @@
     });
   }
 
-  async function speakEdgeApi(text, lang, myGen) {
+  async function speakLocalApi(text, lang, myGen) {
     const voice = VOICE_BY_LANG[lang] || VOICE_BY_LANG["zh-CN"];
     const url =
       `/api/tts?text=${encodeURIComponent(text)}` +
       `&lang=${encodeURIComponent(lang)}` +
-      `&voice=${encodeURIComponent(voice)}`;
+      `&voice=${encodeURIComponent(voice)}` +
+      `&engine=auto`;
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) throw new Error(`tts ${r.status}`);
+    const engine = r.headers.get("X-TTS-Engine") || "local-api";
     const blob = await r.blob();
     if (blob.size < 100) throw new Error("tts empty audio");
     if (myGen !== gen) return "stopped";
     const obj = URL.createObjectURL(blob);
     try {
-      return await playUrl(obj, myGen);
+      const st = await playUrl(obj, myGen);
+      console.info(`[ClassicalTTS] engine=${engine}`);
+      return st;
     } finally {
       URL.revokeObjectURL(obj);
     }
@@ -227,10 +228,8 @@
     const myGen = gen;
     const m = await ensureMode();
     try {
-      if (m === "edge-api") {
-        const st = await speakEdgeApi(t, lang, myGen);
-        console.info("[ClassicalTTS] engine=edge-api");
-        return st;
+      if (m === "local-api") {
+        return await speakLocalApi(t, lang, myGen);
       }
       if (m === "baidu") {
         const st = await speakBaidu(t, lang, myGen);
@@ -239,7 +238,7 @@
       }
     } catch (err) {
       console.warn("[ClassicalTTS] engine failed, fallback to webspeech", err);
-      if (m === "edge-api") mode = null;
+      if (m === "local-api") mode = null;
       else mode = "webspeech";
     }
     console.info("[ClassicalTTS] engine=webspeech");
@@ -247,7 +246,6 @@
   }
 
   async function speakQueue(texts, { lang = "zh-CN", onItem, onEnd } = {}) {
-    // 关键：在点击同步阶段解锁音频，避免 await 后被自动播放策略拦截
     unlockAudio();
     const myGen = ++gen;
     cancelPlayback();

@@ -76,7 +76,7 @@
   }
 
 
-  const CORPUS_VERSION = "a5ccd51c3524";
+  const CORPUS_VERSION = "a4fdcc758b18";
   let corpus = null;
 
   async function loadCorpus() {
@@ -1356,6 +1356,7 @@
     const note = it.note || "";
     if (note === "英文翻译" || note.startsWith("英文")) return "英文";
     if (note === "梵文翻译" || note.startsWith("梵文")) return "梵文";
+    if (note === "白话解说" || note.startsWith("白话")) return "中文";
     const zhIdx = list
       .map((x, i) => ({ x, i }))
       .filter(({ x }) => !isForeignInterp(x))
