@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>单字说文 · SILIFON</title>
+  <link rel="stylesheet" href="glyph-ui.css" />
+  <style>
+    @font-face {
+      font-family: 'SilifonWeb';
+      src: url('fonts/silifon.ttf?v=20260920155506') format('truetype');
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Silifon1Web';
+      src: url('fonts/silifon1.ttf?v=20260920155506') format('truetype');
+      font-display: block;
+    }
+    :root {
+      font-family: system-ui, -apple-system, sans-serif;
+      --silifon-family: 'SilifonWeb';
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 28px 20px 40px;
+      background: #fafafa; color: #222;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; font-weight: 600; }
+    .lead { font-size: 0.88rem; color: #666; line-height: 1.55; margin: 0 0 16px; }
+    .lead a { color: #1565c0; text-decoration: none; }
+    .lead a:hover { text-decoration: underline; }
+
+    .site-nav {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin: 0 0 18px;
+    }
+    .site-nav a {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      background: #fff;
+      color: #333;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .site-nav a:hover { border-color: #90caf9; background: #f5f9ff; }
+    .site-nav a.current {
+      border-color: #1565c0;
+      color: #1565c0;
+      background: #e3f2fd;
+    }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+      margin-bottom: 14px;
+    }
+    .toolbar label { display: block; font-size: 0.75rem; color: #666; margin-bottom: 4px; }
+    .char-row { display: flex; gap: 8px; }
+    #charInput {
+      width: 4.5rem; font-size: 1.4rem; text-align: center;
+      padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px;
+      font-family: "Songti SC", "SimSun", serif;
+    }
+    #charInput:focus { border-color: #1565c0; outline: none; }
+    button {
+      border: none; background: #1565c0; color: #fff;
+      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
+    }
+    button:hover { background: #0d47a1; }
+    .opt select {
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem;
+    }
+    .err { color: #b00020; font-size: 0.9rem; margin: 8px 0; }
+    .empty-hint { font-size: 0.85rem; color: #999; padding: 12px 0; }
+    .result-section { margin-top: 22px; }
+    .sec-title {
+      font-size: 1rem; margin: 0 0 10px; font-weight: 600;
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+    }
+    .char-label { font-weight: normal; color: #666; font-size: 0.9rem; }
+    .ext-link { font-size: 0.78rem; font-weight: normal; }
+    .ext-link a { color: #1565c0; text-decoration: none; }
+    .ext-link a:hover { text-decoration: underline; }
+
+    .silifon-preview {
+      font-family: var(--silifon-family), serif;
+      font-size: 4rem;
+      line-height: 1;
+      padding: 16px 18px;
+      background: #fff;
+      border: 1px solid #e2e2e2;
+      border-radius: 10px;
+      display: inline-block;
+      min-width: 4.5rem;
+      text-align: center;
+      cursor: pointer;
+    }
+    .silifon-preview:hover { border-color: #90caf9; background: #f5f9ff; }
+
+    .shuowen-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .shuowen-head {
+      display: flex; flex-wrap: wrap; gap: 10px 18px;
+      align-items: baseline; margin-bottom: 10px;
+    }
+    .shuowen-word {
+      font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+      font-size: 2.4rem; line-height: 1; font-weight: 600;
+    }
+    .shuowen-meta { font-size: 0.82rem; color: #555; line-height: 1.5; }
+    .shuowen-meta span { margin-right: 12px; white-space: nowrap; }
+    .shuowen-block { margin-top: 10px; }
+    .shuowen-label {
+      font-size: 0.78rem; color: #888; margin: 0 0 4px; font-weight: 600;
+    }
+    .shuowen-text {
+      font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", serif;
+      font-size: 1.05rem; line-height: 1.65; color: #222; margin: 0;
+      white-space: pre-wrap;
+    }
+    .shuowen-duan {
+      margin-top: 8px; border-top: 1px dashed #e8e8e8; padding-top: 8px;
+    }
+    .shuowen-duan details { margin-top: 6px; }
+    .shuowen-duan summary {
+      cursor: pointer; font-size: 0.85rem; color: #444; user-select: none;
+    }
+    .shuowen-duan .note-lemma {
+      margin: 6px 0 0; font-size: 0.88rem; line-height: 1.5; color: #777;
+      font-family: "Songti SC", "SimSun", serif;
+    }
+    .shuowen-duan .note {
+      margin: 4px 0 0; font-size: 0.92rem; line-height: 1.55; color: #444;
+      font-family: "Songti SC", "SimSun", serif;
+    }
+    .shuowen-variants { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .shuowen-variant {
+      border: 1px solid #eee; border-radius: 8px; padding: 8px 10px;
+      background: #fafafa; min-width: 72px;
+    }
+    .shuowen-variant .vh {
+      font-family: "Songti SC", "SimSun", serif; font-size: 1.4rem; font-weight: 600;
+    }
+    .shuowen-variant .ve {
+      font-size: 0.78rem; color: #666; margin-top: 4px; line-height: 1.4;
+    }
+
+    .variant-grid {
+      display: flex; flex-wrap: wrap; gap: 10px;
+    }
+    .variant-card {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px; background: #fff; border: 1px solid #e8e8e8; border-radius: 8px;
+    }
+    .variant-thumb {
+      width: 96px; height: 96px; border: 1px solid #ddd; border-radius: 4px;
+      background: #d7d5d0; display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .variant-thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .variant-caption {
+      font-size: 0.68rem; color: #444; text-align: center; max-width: 110px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>单字说文</h1>
+    <nav class="site-nav" aria-label="站点导航">
+      <a href="./">硅体展示</a>
+      <a class="current" href="./shuowen.html">单字说文</a>
+      <a href="./classical/">古文学习</a>
+    </nav>
+    <p class="lead">
+      输入一个汉字后点<strong>显示</strong>或按 <strong>Enter</strong>。
+      展示《说文解字》许慎原文与段注（数据源自
+      <a href="https://github.com/shuowenjiezi/shuowen" target="_blank" rel="noopener">shuowenjiezi/shuowen</a>），
+      并对照硅体字形与本地甲骨文写法。点击硅体字形可查看构形动画。
+    </p>
+
+    <div class="toolbar">
+      <div>
+        <label for="charInput">字符</label>
+        <div class="char-row">
+          <input id="charInput" type="text" maxlength="8" placeholder="字" autocomplete="off" />
+          <button type="button" id="btnShow">显示</button>
+        </div>
+      </div>
+      <div class="opt">
+        <label for="fontFile">硅体文件</label>
+        <select id="fontFile">
+          <option value="silifon">silifon</option>
+          <option value="silifon1">silifon1</option>
+        </select>
+      </div>
+    </div>
+
+    <p id="msg" class="err" style="display:none;"></p>
+    <p id="idleHint" class="empty-hint">输入汉字后点「显示」或按 Enter</p>
+
+    <section id="secShuowen" class="result-section" hidden>
+      <h2 class="sec-title">
+        说文解字<span class="char-label" id="swCharLabel"></span>
+        <span class="ext-link" id="swExtLink"></span>
+      </h2>
+      <div id="shuowenHost"></div>
+    </section>
+
+    <section id="secSilifon" class="result-section" hidden>
+      <h2 class="sec-title">硅体字形<span class="char-label" id="sfCharLabel"></span></h2>
+      <div id="silifonPreview" class="silifon-preview" title="点击查看字元结构"></div>
+      <p id="fontStatus" class="empty-hint" style="padding-top:8px;"></p>
+    </section>
+
+    <section id="secJiaguwen" class="result-section" hidden>
+      <h2 class="sec-title">甲骨文写法<span class="char-label" id="jgCharLabel"></span></h2>
+      <div id="variantGrid" class="variant-grid"></div>
+    </section>
+  </div>
+
+  <script src="glyph-ui.js"></script>
+  <script src="glyph-anim.js"></script>
+  <script src="shuowen-lookup.js"></script>
+  <script>
+    const FONT_VERSION = '20260920155506';
+    const FONT_FAMILIES = { silifon: 'SilifonWeb', silifon1: 'Silifon1Web' };
+    const FONT_FILES = {
+      silifon: 'fonts/silifon.ttf?v=' + FONT_VERSION,
+      silifon1: 'fonts/silifon1.ttf?v=' + FONT_VERSION,
+    };
+
+    GlyphUI.init({ baseUrl: './' });
+    ShuowenLookup.init({ baseUrl: './' });
+
+    const charInput = document.getElementById('charInput');
+    const btnShow = document.getElementById('btnShow');
+    const fontFile = document.getElementById('fontFile');
+    const msgEl = document.getElementById('msg');
+    const idleHint = document.getElementById('idleHint');
+    const secShuowen = document.getElementById('secShuowen');
+    const secSilifon = document.getElementById('secSilifon');
+    const secJiaguwen = document.getElementById('secJiaguwen');
+    const shuowenHost = document.getElementById('shuowenHost');
+    const silifonPreview = document.getElementById('silifonPreview');
+    const variantGrid = document.getElementById('variantGrid');
+    const fontStatus = document.getElementById('fontStatus');
+    const loadedFonts = new Map();
+    let imeComposing = false;
+    let confirmedChar = '';
+
+    function showMsg(text) {
+      if (!text) {
+        msgEl.style.display = 'none';
+        msgEl.textContent = '';
+        return;
+      }
+      msgEl.style.display = 'block';
+      msgEl.textContent = text;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+    }
+
+    function firstChar(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '';
+      return [...s][0] || '';
+    }
+
+    function svgDataUrl(svg) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    async function ensureFont(key) {
+      if (loadedFonts.has(key)) return loadedFonts.get(key);
+      const family = FONT_FAMILIES[key] || FONT_FAMILIES.silifon;
+      const face = new FontFace(family, "url('" + FONT_FILES[key] + "')", { display: 'block' });
+      const p = face.load().then((f) => {
+        document.fonts.add(f);
+        return f;
+      });
+      loadedFonts.set(key, p);
+      return p;
+    }
+
+    function renderShuowenEntry(e) {
+      const card = document.createElement('div');
+      card.className = 'shuowen-card';
+
+      const head = document.createElement('div');
+      head.className = 'shuowen-head';
+      const word = document.createElement('div');
+      word.className = 'shuowen-word';
+      word.textContent = e.wordhead || '';
+      const meta = document.createElement('div');
+      meta.className = 'shuowen-meta';
+      const bits = [];
+      if (e.radical) bits.push('<span>部首 ' + escapeHtml(e.radical) + '</span>');
+      if (e.volume) bits.push('<span>' + escapeHtml(e.volume) + '</span>');
+      if (e.pronunciation) bits.push('<span>反切 ' + escapeHtml(e.pronunciation) + '</span>');
+      if (e.pinyin) bits.push('<span>拼音 ' + escapeHtml(e.pinyin) + '</span>');
+      if (e.url) {
+        bits.push(
+          '<span><a href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener">shuowen.org</a></span>'
+        );
+      }
+      meta.innerHTML = bits.join('');
+      head.appendChild(word);
+      head.appendChild(meta);
+      card.appendChild(head);
+
+      const expl = document.createElement('div');
+      expl.className = 'shuowen-block';
+      expl.innerHTML =
+        '<p class="shuowen-label">许慎原文</p>' +
+        '<p class="shuowen-text">' + escapeHtml(e.explanation || '（无）') + '</p>';
+      card.appendChild(expl);
+
+      const notes = Array.isArray(e.duanNotes) ? e.duanNotes.filter(Boolean) : [];
+      if (notes.length || e.xuanNote || e.kaiNote) {
+        const duan = document.createElement('div');
+        duan.className = 'shuowen-duan';
+        duan.innerHTML = '<p class="shuowen-label">段玉裁注</p>';
+        notes.forEach((n, i) => {
+          const det = document.createElement('details');
+          if (i === 0) det.open = true;
+          let lemma = '';
+          let noteText = '';
+          if (n && typeof n === 'object') {
+            lemma = String(n.explanation || '').trim();
+            noteText = String(n.note || '').trim();
+          } else {
+            noteText = String(n || '').trim();
+          }
+          const summaryBit = lemma
+            ? (lemma.length > 24 ? lemma.slice(0, 24) + '…' : lemma)
+            : ('注 ' + (i + 1));
+          let body = '';
+          if (lemma) body += '<p class="note-lemma">' + escapeHtml(lemma) + '</p>';
+          body += '<p class="note">' + escapeHtml(noteText || '（无注）') + '</p>';
+          det.innerHTML = '<summary>' + escapeHtml(summaryBit) + '</summary>' + body;
+          duan.appendChild(det);
+        });
+        if (e.xuanNote) {
+          const det = document.createElement('details');
+          det.innerHTML =
+            '<summary>徐铉注</summary><p class="note">' + escapeHtml(e.xuanNote) + '</p>';
+          duan.appendChild(det);
+        }
+        if (e.kaiNote) {
+          const det = document.createElement('details');
+          det.innerHTML =
+            '<summary>徐锴注</summary><p class="note">' + escapeHtml(e.kaiNote) + '</p>';
+          duan.appendChild(det);
+        }
+        card.appendChild(duan);
+      }
+
+      const variants = Array.isArray(e.variants) ? e.variants : [];
+      if (variants.length) {
+        const block = document.createElement('div');
+        block.className = 'shuowen-block';
+        block.innerHTML = '<p class="shuowen-label">重文</p>';
+        const row = document.createElement('div');
+        row.className = 'shuowen-variants';
+        variants.forEach((v) => {
+          const cell = document.createElement('div');
+          cell.className = 'shuowen-variant';
+          const vh = document.createElement('div');
+          vh.className = 'vh';
+          vh.textContent = v.wordhead || '';
+          const ve = document.createElement('div');
+          ve.className = 've';
+          ve.textContent = v.explanation || '';
+          cell.appendChild(vh);
+          cell.appendChild(ve);
+          row.appendChild(cell);
+        });
+        block.appendChild(row);
+        card.appendChild(block);
+      }
+      return card;
+    }
+
+    async function renderSilifon(ch) {
+      secSilifon.hidden = false;
+      document.getElementById('sfCharLabel').textContent = ' · ' + ch;
+      silifonPreview.textContent = ch;
+      const key = fontFile.value || 'silifon';
+      document.documentElement.style.setProperty('--silifon-family', "'" + (FONT_FAMILIES[key] || 'SilifonWeb') + "'");
+      fontStatus.textContent = '字体加载中…';
+      try {
+        await ensureFont(key);
+        fontStatus.textContent = '点击字形查看字元结构与构形动画';
+      } catch (e) {
+        fontStatus.textContent = '字体加载失败';
+      }
+    }
+
+    let jiaguwenData = null;
+    let jiaguwenPromise = null;
+    async function loadJiaguwen() {
+      if (jiaguwenData) return jiaguwenData;
+      if (!jiaguwenPromise) {
+        jiaguwenPromise = fetch('jiaguwen.json', { cache: 'force-cache' })
+          .then(async (r) => {
+            if (!r.ok) throw new Error('jiaguwen');
+            return r.json();
+          })
+          .then((j) => {
+            jiaguwenData = j;
+            return j;
+          })
+          .catch((err) => {
+            jiaguwenPromise = null;
+            throw err;
+          });
+      }
+      return jiaguwenPromise;
+    }
+
+    async function renderJiaguwen(ch) {
+      secJiaguwen.hidden = false;
+      document.getElementById('jgCharLabel').textContent = ' · ' + ch;
+      variantGrid.innerHTML = '<p class="empty-hint">加载甲骨文…</p>';
+      try {
+        const data = await loadJiaguwen();
+        const variants = data[ch] || [];
+        if (!variants.length) {
+          variantGrid.innerHTML = '<p class="empty-hint">字表未收录「' + escapeHtml(ch) + '」</p>';
+          return;
+        }
+        variantGrid.innerHTML = '';
+        variants.forEach((v) => {
+          const card = document.createElement('div');
+          card.className = 'variant-card';
+          const thumb = document.createElement('div');
+          thumb.className = 'variant-thumb';
+          const img = document.createElement('img');
+          img.alt = ch + ' ' + (v.label || '');
+          img.src = svgDataUrl(v.svg || '');
+          thumb.appendChild(img);
+          const cap = document.createElement('div');
+          cap.className = 'variant-caption';
+          cap.textContent = v.label || ('表' + (v.table || ''));
+          card.appendChild(thumb);
+          card.appendChild(cap);
+          variantGrid.appendChild(card);
+        });
+      } catch (e) {
+        variantGrid.innerHTML = '<p class="empty-hint">甲骨文加载失败</p>';
+      }
+    }
+
+    async function confirmAndShow() {
+      if (imeComposing) return;
+      const raw = charInput.value.trim();
+      const ch = firstChar(raw);
+      if (!ch) {
+        confirmedChar = '';
+        showMsg('请先输入一个汉字。');
+        secShuowen.hidden = true;
+        secSilifon.hidden = true;
+        secJiaguwen.hidden = true;
+        idleHint.style.display = 'block';
+        idleHint.textContent = '输入汉字后点「显示」或按 Enter';
+        return;
+      }
+      if (raw.length > ch.length) charInput.value = ch;
+      confirmedChar = ch;
+      showMsg('');
+      idleHint.style.display = 'block';
+      idleHint.textContent = '加载中…';
+      secShuowen.hidden = true;
+      secSilifon.hidden = true;
+      secJiaguwen.hidden = true;
+
+      let swInfo = null;
+      try {
+        swInfo = await ShuowenLookup.lookup(ch);
+      } catch (e) {
+        swInfo = null;
+      }
+
+      idleHint.style.display = 'none';
+      secShuowen.hidden = false;
+      document.getElementById('swCharLabel').textContent = ' · ' + ch;
+      shuowenHost.innerHTML = '';
+      if (!swInfo) {
+        document.getElementById('swExtLink').innerHTML = '';
+        shuowenHost.innerHTML = '<p class="empty-hint">说文解字查询失败</p>';
+      } else {
+        if (swInfo.sourceUrl) {
+          document.getElementById('swExtLink').innerHTML =
+            '<a href="' + escapeHtml(swInfo.sourceUrl) + '" target="_blank" rel="noopener">数据源</a>';
+        }
+        if (!swInfo.dbExists) {
+          shuowenHost.innerHTML = '<p class="empty-hint">未找到 shuowen.json</p>';
+        } else if (!swInfo.found) {
+          shuowenHost.innerHTML =
+            '<p class="empty-hint">说文未收录「' + escapeHtml(ch) + '」</p>';
+        } else {
+          swInfo.entries.forEach((e) => shuowenHost.appendChild(renderShuowenEntry(e)));
+        }
+      }
+
+      await renderSilifon(ch);
+      await renderJiaguwen(ch);
+    }
+
+    silifonPreview.addEventListener('click', () => {
+      if (confirmedChar) GlyphUI.open(confirmedChar);
+    });
+    btnShow.addEventListener('click', confirmAndShow);
+    charInput.addEventListener('compositionstart', () => { imeComposing = true; });
+    charInput.addEventListener('compositionend', () => { imeComposing = false; });
+    charInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        confirmAndShow();
+      }
+    });
+    fontFile.addEventListener('change', () => {
+      if (confirmedChar) renderSilifon(confirmedChar);
+    });
+
+    // 预热说文数据
+    ShuowenLookup.ensureData().catch(() => {});
+
+    const q = new URLSearchParams(location.search);
+    const initChar = firstChar(q.get('char') || q.get('text') || '');
+    if (initChar) {
+      charInput.value = initChar;
+      confirmAndShow();
+    }
+  </script>
+</body>
+</html>

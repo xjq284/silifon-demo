@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SILIFON</title>
+  <title>硅体展示 · SILIFON</title>
   <link rel="stylesheet" href="glyph-ui.css" />
   <style>
     @font-face {
@@ -20,6 +20,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       --silifon: "SilifonWeb", serif;
       --active-font: "SilifonWeb", serif;
+      --glyph-size: 48px;
     }
     * { box-sizing: border-box; }
     body {
@@ -28,11 +29,11 @@
       min-height: 100vh;
     }
     .wrap { max-width: 720px; margin: 0 auto; }
-    h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 600; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; font-weight: 600; }
 
     .site-nav {
       display: flex; flex-wrap: wrap; gap: 10px;
-      margin: -4px 0 18px;
+      margin: 0 0 18px;
     }
     .site-nav a {
       display: inline-block;
@@ -65,12 +66,15 @@
 
     #textInput {
       width: 100%;
+      min-height: 76px;
+      resize: vertical;
       font-size: 1.1rem;
       padding: 12px 14px;
       border: 1px solid #ccc;
       border-radius: 8px;
       outline: none;
       font-family: "Songti SC", "SimSun", serif;
+      line-height: 1.45;
     }
     #textInput:focus { border-color: #1565c0; }
 
@@ -80,76 +84,46 @@
       color: #888;
     }
     #silifonOut {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      line-height: 1;
+      min-height: 120px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid #e2e2e2;
+      border-radius: 10px;
+      font-family: var(--silifon-family, 'SilifonWeb'), serif;
+      font-size: var(--glyph-size, 48px);
+      line-height: 1.25;
+      word-break: break-all;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      overflow: auto;
     }
     .glyph {
-      font-family: var(--silifon-family, 'SilifonWeb');
-      font-size: var(--glyph-size, 3rem);
+      font-family: inherit;
+      font-size: inherit;
       font-feature-settings: "liga" 1, "clig" 1;
       font-variant-ligatures: common-ligatures;
-      padding: 8px 10px;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      background: #fff;
       cursor: pointer;
       user-select: none;
+      border-radius: 4px;
     }
     .glyph:hover {
-      border-color: #90caf9;
       background: #f5f9ff;
+      box-shadow: inset 0 0 0 1px #90caf9;
+    }
+    .glyph-space {
+      white-space: pre;
     }
 
     .hint { margin-top: 16px; font-size: 0.85rem; color: #666; line-height: 1.55; }
     .hint strong { color: #333; font-weight: 600; }
-    .feedback {
-      margin-top: 36px;
-      padding-top: 24px;
-      border-top: 1px solid #eee;
-    }
-    .feedback h2 { font-size: 1rem; margin: 0 0 8px; font-weight: 600; }
-    .feedback .lead { font-size: 0.85rem; color: #666; line-height: 1.5; margin: 0 0 14px; }
-    .feedback label {
-      display: block; font-size: 0.75rem; color: #666; margin: 0 0 4px;
-    }
-    .feedback textarea, .feedback input[type="text"] {
-      width: 100%;
-      font-size: 0.95rem;
-      padding: 10px 12px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      outline: none;
-      font-family: inherit;
-      margin-bottom: 12px;
-    }
-    .feedback textarea:focus, .feedback input[type="text"]:focus { border-color: #1565c0; }
-    .feedback textarea { min-height: 72px; resize: vertical; }
-    #wishChars { font-family: "Songti SC", "SimSun", serif; font-size: 1.15rem; }
-    #wishSubmit {
-      border: none; background: #1565c0; color: #fff;
-      border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-    }
-    #wishSubmit:hover { background: #0d47a1; }
-    .wish-note { font-size: 0.75rem; color: #888; margin: 10px 0 0; }
-    #wishList { margin: 18px 0 0; padding: 0; list-style: none; }
-    #wishList li {
-      padding: 10px 0;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 0.9rem;
-    }
-    #wishList a { color: #1565c0; text-decoration: none; }
-    #wishList a:hover { text-decoration: underline; }
-    #wishList .meta { display: block; font-size: 0.75rem; color: #999; margin-top: 4px; }
-    #wishListStatus { font-size: 0.8rem; color: #888; margin: 8px 0 0; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>SILIFON</h1>
+    <h1>硅体展示</h1>
     <nav class="site-nav" aria-label="站点导航">
-      <a class="current" href="./">字形演示</a>
+      <a class="current" href="./">硅体展示</a>
+      <a href="./shuowen.html">单字说文</a>
       <a href="./classical/">古文学习</a>
     </nav>
 
@@ -166,7 +140,8 @@
         </select>
       </div>
     </div>
-    <input id="textInput" type="text" placeholder="输入文本" autocomplete="off" />
+    <label for="textInput" style="display:block;font-size:0.75rem;color:#666;margin:0 0 4px;">展示文本</label>
+    <textarea id="textInput" placeholder="在此输入汉字或句子，可换行…" autocomplete="off"></textarea>
     <div class="out-label">硅体 <span id="fontStatus"></span></div>
     <div id="silifonOut"></div>
     <p class="hint">
@@ -174,19 +149,6 @@
       <strong>第一次打开（或换用 silifon1）要下载数兆字体，可能要等十几秒甚至更久</strong>，请稍候再看字形。
       目前字体已覆盖《千字文》《三字经》《百家姓》等常用汉字，并在每天增加中。
     </p>
-
-    <section class="feedback" aria-labelledby="wishTitle">
-      <h2 id="wishTitle">留言 · 希望哪些字做甲骨文化</h2>
-      <p class="lead">告诉我你最希望先补哪些字的甲骨文写法。提交会打开 GitHub Issue（需登录 GitHub）。</p>
-      <label for="wishChars">希望增加甲骨文的字</label>
-      <input id="wishChars" type="text" placeholder="例如：龍 鳳 車 馬" autocomplete="off" />
-      <label for="wishNote">说明（可选）</label>
-      <textarea id="wishNote" placeholder="为什么想看这些字，或有无参考字形"></textarea>
-      <button id="wishSubmit" type="button">提交留言</button>
-      <p class="wish-note">没有 GitHub 账号也可以先写下字，再复制到其他渠道发给我。</p>
-      <p id="wishListStatus"></p>
-      <ul id="wishList"></ul>
-    </section>
   </div>
 
   <script src="glyph-ui.js"></script>
@@ -196,8 +158,6 @@
     let currentFontKey = 'silifon';
 
     const FONT_VERSION = '20260920155506';
-    const WISH_REPO = 'xjq284/silifon-demo';
-    const WISH_TITLE_PREFIX = '甲骨文愿望：';
     const FONT_FAMILIES = {
       silifon: 'SilifonWeb',
       silifon1: 'Silifon1Web',
@@ -214,10 +174,6 @@
     const fontFileSelect = document.getElementById('fontFile');
     const silifonOut = document.getElementById('silifonOut');
     const fontStatus = document.getElementById('fontStatus');
-
-    function chars(text) {
-      return Array.from(text || '').filter((ch) => /\S/u.test(ch));
-    }
 
     function fontFamilyId(key) {
       return FONT_FAMILIES[key] || FONT_FAMILIES.silifon;
@@ -260,15 +216,24 @@
 
     function render() {
       applyDisplayStyle();
-      const list = chars(textInput.value);
+      const raw = textInput.value || '';
       silifonOut.innerHTML = '';
-      list.forEach((ch) => {
+      for (const ch of raw) {
+        if (ch === '\n') {
+          silifonOut.appendChild(document.createElement('br'));
+          continue;
+        }
         const el = document.createElement('span');
-        el.className = 'glyph';
-        el.textContent = ch;
-        el.addEventListener('click', () => GlyphUI.open(ch));
+        if (/\s/u.test(ch)) {
+          el.className = 'glyph-space';
+          el.textContent = ch;
+        } else {
+          el.className = 'glyph';
+          el.textContent = ch;
+          el.addEventListener('click', () => GlyphUI.open(ch));
+        }
         silifonOut.appendChild(el);
-      });
+      }
     }
 
     let composing = false;
@@ -279,71 +244,6 @@
     fontFileSelect.addEventListener('change', () => {
       setFontFile(fontFileSelect.value).catch(() => {});
     });
-
-    const wishChars = document.getElementById('wishChars');
-    const wishNote = document.getElementById('wishNote');
-    const wishSubmit = document.getElementById('wishSubmit');
-    const wishList = document.getElementById('wishList');
-    const wishListStatus = document.getElementById('wishListStatus');
-
-    function openWishIssue() {
-      const charsText = (wishChars.value || '').trim();
-      const note = (wishNote.value || '').trim();
-      if (!charsText) {
-        wishChars.focus();
-        return;
-      }
-      const title = WISH_TITLE_PREFIX + charsText.slice(0, 40);
-      const body = '希望增加甲骨文的字：\n' + charsText +
-        (note ? '\n\n说明：\n' + note : '');
-      const url = 'https://github.com/' + WISH_REPO + '/issues/new?title=' +
-        encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
-      window.open(url, '_blank', 'noopener');
-    }
-
-    function loadWishList() {
-      wishListStatus.textContent = '正在读取已有留言…';
-      fetch('https://api.github.com/repos/' + WISH_REPO + '/issues?state=open&per_page=30')
-        .then((r) => {
-          if (!r.ok) throw new Error('http ' + r.status);
-          return r.json();
-        })
-        .then((items) => {
-          const wishes = (items || []).filter((it) =>
-            !it.pull_request && String(it.title || '').startsWith(WISH_TITLE_PREFIX)
-          );
-          wishList.innerHTML = '';
-          if (!wishes.length) {
-            wishListStatus.textContent = '还没有留言，欢迎第一条。';
-            return;
-          }
-          wishListStatus.textContent = '最近留言';
-          wishes.forEach((it) => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = it.html_url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = it.title;
-            const meta = document.createElement('span');
-            meta.className = 'meta';
-            const who = (it.user && it.user.login) ? it.user.login : '';
-            meta.textContent = who + (it.comments ? ' · ' + it.comments + ' 条讨论' : '');
-            li.appendChild(a);
-            li.appendChild(meta);
-            wishList.appendChild(li);
-          });
-        })
-        .catch(() => {
-          wishListStatus.textContent = '留言列表暂时读不到，仍可提交新愿望。';
-        });
-    }
-
-    wishSubmit.addEventListener('click', openWishIssue);
-    wishChars.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') openWishIssue();
-    });
-    loadWishList();
 
     ensureFont('silifon').then(() => { applyDisplayStyle(); render(); }).catch(() => {});
 
