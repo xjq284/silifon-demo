@@ -697,6 +697,33 @@ body {
   color: var(--ink);
 }
 
-.brand-wrap { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
-.home-link { color: #555; text-decoration: none; font-size: 0.85rem; }
-.home-link:hover { color: #1565c0; }
+.app > h1 {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 8px;
+}
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.site-nav a {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+.site-nav a:hover { border-color: #90caf9; background: #f5f9ff; }
+.site-nav a.current {
+  border-color: #1565c0;
+  color: #1565c0;
+  background: #e3f2fd;
+}
+.crumb { margin: 0 0 1rem; }
